@@ -1,0 +1,19 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const proprietaires_1 = require("../controllers/proprietaires");
+const auth_1 = require("../middleware/auth");
+const validateRequest_1 = require("../middleware/validateRequest");
+const validation_1 = require("../middleware/validation");
+const proprietaireRouter = express_1.default.Router();
+proprietaireRouter.use(auth_1.authenticateToken);
+proprietaireRouter.post("/", (0, validateRequest_1.validate)(validation_1.createProprietaireSchema), proprietaires_1.createProprietaire);
+proprietaireRouter.get("/", (0, validateRequest_1.validate)(validation_1.paginationSchema), proprietaires_1.getProprietaires);
+proprietaireRouter.get("/stats", proprietaires_1.getProprietairesStats);
+proprietaireRouter.get("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), proprietaires_1.getProprietaireById);
+proprietaireRouter.put("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), (0, validateRequest_1.validate)(validation_1.updateProprietaireSchema), proprietaires_1.updateProprietaire);
+proprietaireRouter.delete("/:id", (0, auth_1.authorizeRoles)("ADMIN"), (0, validateRequest_1.validate)(validation_1.idParamSchema), proprietaires_1.deleteProprietaire);
+exports.default = proprietaireRouter;

@@ -1,0 +1,22 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const documents_1 = require("../controllers/documents");
+const auth_1 = require("../middleware/auth");
+const upload_1 = require("../middleware/upload");
+const validateRequest_1 = require("../middleware/validateRequest");
+const validation_1 = require("../middleware/validation");
+const documentRouter = express_1.default.Router();
+documentRouter.use(auth_1.authenticateToken);
+documentRouter.post("/upload", upload_1.singleUpload, (0, validateRequest_1.validate)(validation_1.uploadDocumentSchema), documents_1.uploadDocument);
+documentRouter.post("/upload-multiple", upload_1.multipleUpload, documents_1.uploadDocument);
+documentRouter.get("/", (0, validateRequest_1.validate)(validation_1.paginationSchema), documents_1.getDocuments);
+documentRouter.get("/stats", documents_1.getDocumentsStats);
+documentRouter.get("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), documents_1.getDocumentById);
+documentRouter.get("/:id/download", (0, validateRequest_1.validate)(validation_1.idParamSchema), documents_1.downloadDocument);
+documentRouter.put("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), (0, validateRequest_1.validate)(validation_1.updateDocumentSchema), documents_1.updateDocument);
+documentRouter.delete("/:id", (0, auth_1.authorizeRoles)("ADMIN"), (0, validateRequest_1.validate)(validation_1.idParamSchema), documents_1.deleteDocument);
+exports.default = documentRouter;

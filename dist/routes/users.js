@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const users_1 = require("../controllers/users");
+const auth_1 = require("../middleware/auth");
+const validateRequest_1 = require("../middleware/validateRequest");
+const validation_1 = require("../middleware/validation");
+const userRouter = express_1.default.Router();
+userRouter.post("/register", (0, validateRequest_1.validate)(validation_1.createUserSchema), users_1.createUser);
+userRouter.post("/login", (0, validateRequest_1.validate)(validation_1.loginUserSchema), users_1.loginUser);
+userRouter.use(auth_1.authenticateToken);
+userRouter.get("/", (0, auth_1.authorizeRoles)("ADMIN"), (0, validateRequest_1.validate)(validation_1.paginationSchema), users_1.getUsers);
+userRouter.get("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), users_1.getUserById);
+userRouter.put("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), (0, validateRequest_1.validate)(validation_1.updateUserSchema), users_1.updateUser);
+userRouter.delete("/:id", (0, auth_1.authorizeRoles)("ADMIN"), (0, validateRequest_1.validate)(validation_1.idParamSchema), users_1.deleteUser);
+userRouter.put("/:id/password", (0, validateRequest_1.validate)(validation_1.idParamSchema), (0, validateRequest_1.validate)(validation_1.changePasswordSchema), users_1.changePassword);
+exports.default = userRouter;

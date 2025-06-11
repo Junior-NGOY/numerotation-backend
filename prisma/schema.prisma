@@ -1,22 +1,140 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-model School {
-  id String @id @default(cuid()) // or use @default(uuid()) for UUID
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
   name      String
-  logo      String?
-  slug String @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  password  String
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdProprietaires Proprietaire[] @relation("CreatedBy")
+  createdVehicules     Vehicule[]     @relation("CreatedBy")
+  createdDocuments     Document[]     @relation("CreatedBy")
+
+  @@map("users")
+}
+
+model Proprietaire {
+  id               String   @id @default(cuid())
+  nom              String
+  prenom           String
+  adresse          String
+  telephone        String
+  numeroPiece      String   @unique
+  typePiece        TypePiece
+  lieuDelivrance   String
+  dateDelivrance   DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  vehicules        Vehicule[]
+  documents        Document[]
+  createdBy        User       @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById      String
+
+  @@map("proprietaires")
+}
+
+model Vehicule {
+  id                    String   @id @default(cuid())
+  marque                String
+  modele                String
+  typeVehicule          TypeVehicule
+  numeroImmatriculation String   @unique
+  numeroChassis         String   @unique
+  anneeFabrication      Int
+  capaciteAssises       Int
+  itineraire            String
+  codeUnique            String   @unique
+  anneeEnregistrement   Int
+  prixEnregistrement    Int      @default(30000) // Prix en francs CFA selon le type de véhicule
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  proprietaire          Proprietaire @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
+  proprietaireId        String
+  documents             Document[]
+  createdBy             User         @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById           String
+
+  @@map("vehicules")
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  nom          String
+  type         TypeDocument
+  chemin       String
+  taille       Int?
+  mimeType     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  proprietaire Proprietaire? @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
+  proprietaireId String?
+  vehicule     Vehicule?     @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
+  vehiculeId   String?
+  createdBy    User          @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById  String
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  action    String
+  table     String
+  recordId  String
+  oldValues Json?
+  newValues Json?
+  userId    String?
+  userEmail String?
+  createdAt DateTime   @default(now())
+
+  @@map("audit_logs")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TypePiece {
+  CARTE_IDENTITE
+  PASSEPORT
+  //PERMIS
+}
+
+enum TypeVehicule {
+  BUS
+  MINI_BUS
+  TAXI
+ 
+}
+
+enum TypeDocument {
+  PIECE_IDENTITE
+  PERMIS_CONDUIRE
+  CARTE_ROSE
+  PDF_COMPLET
+  QR_CODE
 }
