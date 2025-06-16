@@ -9,6 +9,7 @@ import {
 } from "@/controllers/vehicules";
 import { authenticateToken, authorizeRoles } from "@/middleware/auth";
 import { validate } from "@/middleware/validateRequest";
+import { multipleUpload } from "@/middleware/upload";
 import {
   createVehiculeSchema,
   updateVehiculeSchema,
@@ -22,7 +23,7 @@ const vehiculeRouter = express.Router();
 vehiculeRouter.use(authenticateToken);
 
 // Routes CRUD
-vehiculeRouter.post("/", validate(createVehiculeSchema), createVehicule);
+vehiculeRouter.post("/", multipleUpload, validate(createVehiculeSchema), createVehicule);
 vehiculeRouter.get("/", validate(paginationSchema), getVehicules);
 vehiculeRouter.get("/stats", getVehiculesStats);
 vehiculeRouter.get("/:id", validate(idParamSchema), getVehiculeById);

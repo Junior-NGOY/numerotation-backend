@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { unlink } from "fs/promises";
 import path from "path";
 import { getAuthenticatedUser } from "@/types";
+import { pinataService } from "@/services/pinata";
 
 // Créer/Uploader un document
 export async function uploadDocument(req: Request, res: Response) {
@@ -49,16 +50,56 @@ export async function uploadDocument(req: Request, res: Response) {
           error: "Véhicule non trouvé"
         });
       }
-    }
-
-    // Gestion du fichier uploadé
-    let fileData = {};
+    }    // Gestion du fichier uploadé avec PINATA
+    let documentData: any = {};
     if (req.file) {
-      fileData = {
-        chemin: req.file.path,
-        taille: req.file.size,
-        mimeType: req.file.mimetype
-      };
+      try {
+        // Tentative d'upload vers PINATA si configuré
+        if (pinataService.isConfigured()) {
+          console.log('📤 Upload vers PINATA...');
+          const pinataResult = await pinataService.uploadFile(
+            req.file.path,
+            req.file.filename,
+            {
+              type: type,
+              proprietaireId: proprietaireId || null,
+              vehiculeId: vehiculeId || null,
+              uploadedBy: createdById
+            }
+          );
+
+          const pinataUrl = pinataService.generateFileUrl(pinataResult.IpfsHash);
+            documentData = {
+            chemin: pinataUrl,
+            taille: req.file.size,
+            mimeType: req.file.mimetype
+          };
+
+          // Supprimer le fichier local après upload réussi vers PINATA
+          try {
+            await unlink(req.file.path);
+            console.log('🗑️ Fichier local supprimé après upload PINATA');
+          } catch (unlinkError) {
+            console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
+          }
+
+          console.log('✅ Fichier uploadé vers PINATA:', pinataUrl);        } else {
+          // Fallback vers stockage local
+          console.log('💾 Stockage local (PINATA non configuré)');
+          documentData = {
+            chemin: req.file.path,
+            taille: req.file.size,
+            mimeType: req.file.mimetype
+          };
+        }
+      } catch (pinataError) {        console.error('❌ Erreur PINATA, fallback vers stockage local:', pinataError);
+        // Fallback vers stockage local en cas d'erreur PINATA
+        documentData = {
+          chemin: req.file.path,
+          taille: req.file.size,
+          mimeType: req.file.mimetype
+        };
+      }
     } else {
       return res.status(400).json({
         data: null,
@@ -71,9 +112,7 @@ export async function uploadDocument(req: Request, res: Response) {
         proprietaireId: proprietaireId || null,
         vehiculeId: vehiculeId || null,
         createdById,
-        chemin: req.file!.path,
-        taille: req.file!.size,
-        mimeType: req.file!.mimetype
+        ...documentData
       },
       include: {
         proprietaire: proprietaireId ? {

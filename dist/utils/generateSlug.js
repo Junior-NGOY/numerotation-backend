@@ -39,28 +39,45 @@ function generateSequentialVehiculeCode(year, sequence, numeroImmatriculation) {
 }
 function getNextVehicleSequence(year, numeroImmatriculation) {
     return __awaiter(this, void 0, void 0, function* () {
-        const plateLetters = numeroImmatriculation
-            .replace(/[^A-Z]/gi, '')
-            .toUpperCase()
-            .substring(0, 2)
-            .padEnd(2, 'X');
-        const yearPrefix = `LSH-${year.toString().slice(-2)}-${plateLetters}`;
-        const lastVehicle = yield db_1.db.vehicule.findFirst({
-            where: {
-                codeUnique: {
-                    startsWith: yearPrefix
+        try {
+            const yearPrefix = `LSH-${year.toString().slice(-2)}-`;
+            console.log(`🔍 Recherche de tous les véhicules pour l'année ${year}`);
+            const vehicules = yield db_1.db.vehicule.findMany({
+                where: {
+                    codeUnique: {
+                        startsWith: yearPrefix
+                    }
+                },
+                select: {
+                    codeUnique: true
                 }
-            },
-            orderBy: {
-                codeUnique: 'desc'
+            });
+            if (vehicules.length === 0) {
+                console.log(`✨ Premier véhicule pour l'année ${year}, séquence: 1`);
+                return 1;
             }
-        });
-        if (!lastVehicle) {
-            return 1;
+            let maxSequence = 0;
+            for (const vehicule of vehicules) {
+                const codeUnique = vehicule.codeUnique;
+                const parts = codeUnique.split('-');
+                if (parts.length === 3) {
+                    const sequencePart = parts[2].substring(2);
+                    const sequenceNum = parseInt(sequencePart, 10);
+                    if (!isNaN(sequenceNum) && sequenceNum > maxSequence) {
+                        maxSequence = sequenceNum;
+                    }
+                }
+            }
+            const nextSequence = maxSequence + 1;
+            console.log(`📈 Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
+            return nextSequence;
         }
-        const codeUnique = lastVehicle.codeUnique;
-        const sequencePart = codeUnique.split('-')[2].substring(2);
-        const lastSequence = parseInt(sequencePart, 10);
-        return lastSequence + 1;
+        catch (error) {
+            console.error('❌ Erreur lors de la récupération de la séquence:', error);
+            const timestamp = Date.now().toString().slice(-6);
+            const fallbackSequence = parseInt(timestamp, 10);
+            console.log(`🚨 Utilisation du fallback, séquence: ${fallbackSequence}`);
+            return fallbackSequence;
+        }
     });
 }

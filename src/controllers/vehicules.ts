@@ -3,6 +3,21 @@ import { Request, Response } from "express";
 import { getAuthenticatedUser } from "@/types";
 import { generateSequentialVehiculeCode, getNextVehicleSequence } from "@/utils/generateSlug";
 import { calculateRegistrationPrice } from "@/utils/pricingUtils";
+import { pinataService } from "@/services/pinata";
+import { unlink } from "fs/promises";
+
+// Fonction utilitaire pour déterminer le type de document basé sur le nom du fichier
+function determineDocumentType(filename: string): 'CARTE_ROSE' | 'PERMIS_CONDUIRE' | 'PDF_COMPLET' {
+  const lowerFilename = filename.toLowerCase();
+  
+  if (lowerFilename.includes('carte') || lowerFilename.includes('rose') || lowerFilename.includes('grise')) {
+    return 'CARTE_ROSE';
+  } else if (lowerFilename.includes('permis') || lowerFilename.includes('conduire')) {
+    return 'PERMIS_CONDUIRE';
+  } else {
+    return 'PDF_COMPLET';
+  }
+}
 
 // Créer un véhicule
 export async function createVehicule(req: Request, res: Response) {
@@ -17,22 +32,57 @@ export async function createVehicule(req: Request, res: Response) {
     itineraire,
     codeUnique: providedCodeUnique,
     anneeEnregistrement,
-    proprietaireId  } = req.body;
+    proprietaireId
+  } = req.body;
   
-  const { userId: createdById } = getAuthenticatedUser(req);  try {
+  const { userId: createdById } = getAuthenticatedUser(req);
+
+  try {
+    // Convertir les champs numériques
+    const anneeFabricationInt = parseInt(anneeFabrication);
+    const capaciteAssisesInt = parseInt(capaciteAssises);
+    
+    // Validation des champs numériques
+    if (isNaN(anneeFabricationInt) || anneeFabricationInt < 1900 || anneeFabricationInt > new Date().getFullYear() + 1) {
+      return res.status(400).json({
+        data: null,
+        error: "L'année de fabrication doit être un nombre valide entre 1900 et l'année courante"
+      });
+    }
+    
+    if (isNaN(capaciteAssisesInt) || capaciteAssisesInt < 1 || capaciteAssisesInt > 100) {
+      return res.status(400).json({
+        data: null,
+        error: "La capacité d'assises doit être un nombre valide entre 1 et 100"
+      });
+    }
+
     // Utiliser l'année courante si anneeEnregistrement n'est pas fournie
-    const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();    // Générer un code unique séquentiel si non fourni
+    const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();// Générer un code unique séquentiel si non fourni
     let codeUnique = providedCodeUnique;
     if (!codeUnique) {
-      const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, numeroImmatriculation);
-      codeUnique = generateSequentialVehiculeCode(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
+      console.log(`🚀 Génération du code unique pour: année=${finalAnneeEnregistrement}, immat=${numeroImmatriculation}`);
       
-      // Vérifier que le code généré n'existe pas déjà (sécurité supplémentaire)
-      const existingVehicle = await db.vehicule.findUnique({ where: { codeUnique } });
-      if (existingVehicle) {
+      try {
+        const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, numeroImmatriculation);
+        codeUnique = generateSequentialVehiculeCode(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
+        
+        console.log(`✅ Code unique généré: ${codeUnique}`);
+        
+        // Vérifier que le code généré n'existe pas déjà (sécurité supplémentaire)
+        const existingVehicle = await db.vehicule.findUnique({ where: { codeUnique } });
+        if (existingVehicle) {
+          console.log(`⚠️ Conflit détecté pour le code: ${codeUnique}`);
+          return res.status(500).json({
+            data: null,
+            error: "Conflit de génération de code unique, veuillez réessayer"
+          });
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la génération du code unique:', error);
         return res.status(500).json({
           data: null,
-          error: "Conflit de génération de code unique, veuillez réessayer"
+          error: "Erreur lors de la génération du code unique"
         });
       }
     }
@@ -85,7 +135,8 @@ const newVehicule = await db.vehicule.create({
         typeVehicule,
         numeroImmatriculation,
         numeroChassis,
-        anneeFabrication,        capaciteAssises,
+        anneeFabrication: anneeFabricationInt,
+        capaciteAssises: capaciteAssisesInt,
         itineraire,
         codeUnique,
         anneeEnregistrement: finalAnneeEnregistrement,
@@ -116,6 +167,77 @@ const newVehicule = await db.vehicule.create({
         }
       }
     });
+
+    // Gestion de l'upload des documents du véhicule si des fichiers sont fournis
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      console.log(`📄 Upload de ${req.files.length} document(s) pour le véhicule...`);
+      
+      for (const file of req.files) {
+        try {
+          let documentData: any = {};
+          
+          // Déterminer le type de document basé sur le nom du fichier ou un champ spécifique
+          const documentType = determineDocumentType(file.originalname);
+          
+          // Tentative d'upload vers PINATA si configuré
+          if (pinataService.isConfigured()) {
+            console.log(`📤 Upload document ${file.originalname} vers PINATA...`);
+            const pinataResult = await pinataService.uploadFile(
+              file.path,
+              file.filename,
+              {
+                type: documentType,
+                vehiculeId: newVehicule.id,
+                vehiculeInfo: `${marque} ${modele} - ${numeroImmatriculation}`,
+                uploadedBy: createdById
+              }
+            );
+
+            const pinataUrl = pinataService.generateFileUrl(pinataResult.IpfsHash);
+              documentData = {
+              nom: `${documentType} - ${marque} ${modele}`,
+              type: documentType,
+              chemin: pinataUrl,
+              taille: file.size,
+              mimeType: file.mimetype,
+              vehiculeId: newVehicule.id,
+              createdById
+            };
+
+            // Supprimer le fichier local après upload réussi vers PINATA
+            try {
+              await unlink(file.path);
+              console.log(`🗑️ Fichier local ${file.filename} supprimé après upload PINATA`);
+            } catch (unlinkError) {
+              console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
+            }
+
+            console.log(`✅ Document ${file.originalname} uploadé vers PINATA:`, pinataUrl);
+          } else {
+            // Fallback vers stockage local
+            console.log(`💾 Stockage local du document ${file.originalname} (PINATA non configuré)`);            documentData = {
+              nom: `${documentType} - ${marque} ${modele}`,
+              type: documentType,
+              chemin: file.path,
+              taille: file.size,
+              mimeType: file.mimetype,
+              vehiculeId: newVehicule.id,
+              createdById
+            };
+          }
+
+          // Créer l'enregistrement du document
+          await db.document.create({
+            data: documentData
+          });
+
+          console.log(`✅ Document ${documentType} créé avec succès pour le véhicule`);
+        } catch (documentError) {
+          console.error(`❌ Erreur lors de l'upload du document ${file.originalname}:`, documentError);
+          // On continue avec les autres fichiers
+        }
+      }
+    }
 
     // Log d'audit
     await db.auditLog.create({
@@ -311,11 +433,35 @@ export async function updateVehicule(req: Request, res: Response) {
     itineraire,
     codeUnique,
     anneeEnregistrement,
-    proprietaireId  } = req.body;
+    proprietaireId
+  } = req.body;
   
   const { userId } = getAuthenticatedUser(req);
 
   try {
+    // Convertir les champs numériques si fournis
+    let anneeFabricationInt;
+    let capaciteAssisesInt;
+    
+    if (anneeFabrication !== undefined) {
+      anneeFabricationInt = parseInt(anneeFabrication);
+      if (isNaN(anneeFabricationInt) || anneeFabricationInt < 1900 || anneeFabricationInt > new Date().getFullYear() + 1) {
+        return res.status(400).json({
+          data: null,
+          error: "L'année de fabrication doit être un nombre valide entre 1900 et l'année courante"
+        });
+      }
+    }
+      if (capaciteAssises !== undefined) {
+      capaciteAssisesInt = parseInt(capaciteAssises);
+      if (isNaN(capaciteAssisesInt) || capaciteAssisesInt < 1 || capaciteAssisesInt > 100) {
+        return res.status(400).json({
+          data: null,
+          error: "La capacité d'assises doit être un nombre valide entre 1 et 100"
+        });
+      }
+    }
+
     const existingVehicule = await db.vehicule.findUnique({
       where: { id }
     });
@@ -402,8 +548,8 @@ export async function updateVehicule(req: Request, res: Response) {
         ...(modele && { modele }),
         ...(typeVehicule && { typeVehicule, prixEnregistrement }),
         ...(numeroImmatriculation && { numeroImmatriculation }),
-        ...(numeroChassis && { numeroChassis }),        ...(anneeFabrication && { anneeFabrication }),
-        ...(capaciteAssises && { capaciteAssises }),
+        ...(numeroChassis && { numeroChassis }),        ...(anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt }),
+        ...(capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt }),
         ...(itineraire && { itineraire }),
         ...(codeUnique && { codeUnique }),
         ...(anneeEnregistrement && { anneeEnregistrement }),        ...(proprietaireId && { proprietaireId })
@@ -463,7 +609,8 @@ export async function updateVehicule(req: Request, res: Response) {
 }
 
 // Supprimer un véhicule
-export async function deleteVehicule(req: Request, res: Response) {  const { id } = req.params;
+export async function deleteVehicule(req: Request, res: Response) {
+  const { id } = req.params;
   
   const { userId } = getAuthenticatedUser(req);
 

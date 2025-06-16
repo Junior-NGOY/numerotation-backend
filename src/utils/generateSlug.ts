@@ -37,37 +37,60 @@ export function generateSequentialVehiculeCode(year: number, sequence: number, n
   return `LSH-${yearSuffix}-${plateLetters}${paddedSequence}`;
 }
 
-// Obtenir le prochain numéro de séquence pour une année et des lettres de plaque données
+// Obtenir le prochain numéro de séquence global pour tous les véhicules
 export async function getNextVehicleSequence(year: number, numeroImmatriculation: string): Promise<number> {
-  // Extraire les 2 premières lettres de la plaque
-  const plateLetters = numeroImmatriculation
-    .replace(/[^A-Z]/gi, '')
-    .toUpperCase()
-    .substring(0, 2)
-    .padEnd(2, 'X');
-  
-  // Chercher le dernier véhicule enregistré pour cette année et ces lettres
-  const yearPrefix = `LSH-${year.toString().slice(-2)}-${plateLetters}`;
-  
-  const lastVehicle = await db.vehicule.findFirst({
-    where: {
-      codeUnique: {
-        startsWith: yearPrefix
+  try {
+    // Chercher tous les véhicules enregistrés pour cette année
+    const yearPrefix = `LSH-${year.toString().slice(-2)}-`;
+    
+    console.log(`🔍 Recherche de tous les véhicules pour l'année ${year}`);
+    
+    const vehicules = await db.vehicule.findMany({
+      where: {
+        codeUnique: {
+          startsWith: yearPrefix
+        }
+      },
+      select: {
+        codeUnique: true
       }
-    },
-    orderBy: {
-      codeUnique: 'desc'
-    }
-  });
+    });
 
-  if (!lastVehicle) {
-    // Premier véhicule pour cette combinaison année/lettres
-    return 1;
+    if (vehicules.length === 0) {
+      console.log(`✨ Premier véhicule pour l'année ${year}, séquence: 1`);
+      return 1;
+    }
+    
+    // Extraire tous les numéros de séquence et trouver le maximum
+    let maxSequence = 0;
+    
+    for (const vehicule of vehicules) {
+      const codeUnique = vehicule.codeUnique;
+      // Format: LSH-25-XY000001, on veut extraire "000001"
+      const parts = codeUnique.split('-');
+      if (parts.length === 3) {
+        const sequencePart = parts[2].substring(2); // Prendre après les 2 lettres
+        const sequenceNum = parseInt(sequencePart, 10);
+        if (!isNaN(sequenceNum) && sequenceNum > maxSequence) {
+          maxSequence = sequenceNum;
+        }
+      }
+    }
+    
+    const nextSequence = maxSequence + 1;
+    
+    console.log(`📈 Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
+    
+    return nextSequence;
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération de la séquence:', error);
+    
+    // Fallback: générer un numéro basé sur timestamp pour éviter les conflits
+    const timestamp = Date.now().toString().slice(-6);
+    const fallbackSequence = parseInt(timestamp, 10);
+    
+    console.log(`🚨 Utilisation du fallback, séquence: ${fallbackSequence}`);
+    return fallbackSequence;
   }
-  // Extraire le numéro de séquence du dernier code
-  const codeUnique = lastVehicle.codeUnique;
-  const sequencePart = codeUnique.split('-')[2].substring(2); // Prendre après les 2 lettres
-  const lastSequence = parseInt(sequencePart, 10);
-  
-  return lastSequence + 1;
 }

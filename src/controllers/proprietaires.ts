@@ -1,6 +1,8 @@
 import { db } from "@/db/db";
 import { Request, Response } from "express";
 import { getAuthenticatedUser } from "@/types";
+import { pinataService } from "@/services/pinata";
+import { unlink } from "fs/promises";
 
 // Créer un propriétaire
 export async function createProprietaire(req: Request, res: Response) {
@@ -27,9 +29,7 @@ export async function createProprietaire(req: Request, res: Response) {
         data: null,
         error: "Un propriétaire avec ce numéro de pièce existe déjà"
       });
-    }
-
-    const newProprietaire = await db.proprietaire.create({
+    }    const newProprietaire = await db.proprietaire.create({
       data: {
         nom,
         prenom,
@@ -57,6 +57,71 @@ export async function createProprietaire(req: Request, res: Response) {
         }
       }
     });
+
+    // Gestion de l'upload de la pièce d'identité si un fichier est fourni
+    if (req.file) {
+      try {
+        let documentData: any = {};
+        
+        // Tentative d'upload vers PINATA si configuré
+        if (pinataService.isConfigured()) {
+          console.log('📤 Upload pièce d\'identité vers PINATA...');
+          const pinataResult = await pinataService.uploadFile(
+            req.file.path,
+            req.file.filename,
+            {
+              type: 'PIECE_IDENTITE',
+              proprietaireId: newProprietaire.id,
+              proprietaireName: `${nom} ${prenom}`,
+              uploadedBy: createdById
+            }
+          );
+
+          const pinataUrl = pinataService.generateFileUrl(pinataResult.IpfsHash);
+            documentData = {
+            nom: `Pièce d'identité - ${nom} ${prenom}`,
+            type: 'PIECE_IDENTITE',
+            chemin: pinataUrl,
+            taille: req.file.size,
+            mimeType: req.file.mimetype,
+            proprietaireId: newProprietaire.id,
+            createdById
+          };
+
+          // Supprimer le fichier local après upload réussi vers PINATA
+          try {
+            await unlink(req.file.path);
+            console.log('🗑️ Fichier local supprimé après upload PINATA');
+          } catch (unlinkError) {
+            console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
+          }
+
+          console.log('✅ Pièce d\'identité uploadée vers PINATA:', pinataUrl);
+        } else {
+          // Fallback vers stockage local
+          console.log('💾 Stockage local de la pièce d\'identité (PINATA non configuré)');          documentData = {
+            nom: `Pièce d'identité - ${nom} ${prenom}`,
+            type: 'PIECE_IDENTITE',
+            chemin: req.file.path,
+            taille: req.file.size,
+            mimeType: req.file.mimetype,
+            proprietaireId: newProprietaire.id,
+            createdById
+          };
+        }
+
+        // Créer l'enregistrement du document
+        await db.document.create({
+          data: documentData
+        });
+
+        console.log('✅ Document de pièce d\'identité créé avec succès');
+      } catch (documentError) {
+        console.error('❌ Erreur lors de l\'upload de la pièce d\'identité:', documentError);
+        // On continue car le propriétaire a été créé avec succès
+        // L'erreur du document ne doit pas faire échouer la création du propriétaire
+      }
+    }
 
     // Log d'audit
     await db.auditLog.create({

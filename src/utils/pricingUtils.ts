@@ -11,9 +11,9 @@ export type TypeVehicule = 'BUS' | 'MINI_BUS' | 'TAXI';
  */
 export function calculateRegistrationPrice(typeVehicule: TypeVehicule): number {
   const pricingMap: Record<TypeVehicule, number> = {
-    BUS: 90000,      // 90,000 FC
-    MINI_BUS: 60000, // 60,000 FC
-    TAXI: 30000      // 30,000 FC
+    BUS: 60000,      // 60,000 FC
+    MINI_BUS: 60000, // 60,000 FC (Taxi-Bus)
+    TAXI: 50000      // 50,000 FC
   };
 
   return pricingMap[typeVehicule];

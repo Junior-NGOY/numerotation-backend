@@ -5,9 +5,9 @@ exports.formatPrice = formatPrice;
 exports.getVehicleTypeDescription = getVehicleTypeDescription;
 function calculateRegistrationPrice(typeVehicule) {
     const pricingMap = {
-        BUS: 90000,
+        BUS: 60000,
         MINI_BUS: 60000,
-        TAXI: 30000
+        TAXI: 50000
     };
     return pricingMap[typeVehicule];
 }

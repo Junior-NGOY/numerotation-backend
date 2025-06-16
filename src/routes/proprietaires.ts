@@ -9,6 +9,7 @@ import {
 } from "@/controllers/proprietaires";
 import { authenticateToken, authorizeRoles } from "@/middleware/auth";
 import { validate } from "@/middleware/validateRequest";
+import { singleUpload } from "@/middleware/upload";
 import {
   createProprietaireSchema,
   updateProprietaireSchema,
@@ -22,7 +23,7 @@ const proprietaireRouter = express.Router();
 proprietaireRouter.use(authenticateToken);
 
 // Routes CRUD
-proprietaireRouter.post("/", validate(createProprietaireSchema), createProprietaire);
+proprietaireRouter.post("/", singleUpload, validate(createProprietaireSchema), createProprietaire);
 proprietaireRouter.get("/", validate(paginationSchema), getProprietaires);
 proprietaireRouter.get("/stats", getProprietairesStats);
 proprietaireRouter.get("/:id", validate(idParamSchema), getProprietaireById);
