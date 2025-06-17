@@ -298,6 +298,15 @@ function getVehicules(req, res) {
                                 dateDelivrance: true
                             }
                         },
+                        itineraire: {
+                            select: {
+                                id: true,
+                                nom: true,
+                                description: true,
+                                distance: true,
+                                duree: true
+                            }
+                        },
                         createdBy: {
                             select: {
                                 id: true,

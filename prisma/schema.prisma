@@ -60,7 +60,6 @@ model Vehicule {
   numeroChassis         String   @unique
   anneeFabrication      Int
   capaciteAssises       Int
-  itineraire            String
   codeUnique            String   @unique
   anneeEnregistrement   Int
   prixEnregistrement    Int      @default(30000) // Prix en francs CFA selon le type de véhicule
@@ -70,11 +69,32 @@ model Vehicule {
   // Relations
   proprietaire          Proprietaire @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
   proprietaireId        String
+  itineraire            Itineraire   @relation(fields: [itineraireId], references: [id])
+  itineraireId          String
   documents             Document[]
   createdBy             User         @relation("CreatedBy", fields: [createdById], references: [id])
   createdById           String
 
   @@map("vehicules")
+}
+
+model Itineraire {
+  id                    String     @id @default(cuid())
+  nom                   String     @unique
+  pointDepart           String
+  pointArrivee          String
+  description           String?
+  distance              Float?     // Distance en kilomètres
+  duree                 Int?       // Durée en minutes
+  tarif                 Int?       // Tarif en francs CFA
+  statut                StatutItineraire @default(ACTIF)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  // Relations
+  vehicules             Vehicule[]
+
+  @@map("itineraires")
 }
 
 model Document {
@@ -137,4 +157,10 @@ enum TypeDocument {
   CARTE_ROSE
   PDF_COMPLET
   QR_CODE
+}
+
+enum StatutItineraire {
+  ACTIF
+  INACTIF
+  SUSPENDU
 }

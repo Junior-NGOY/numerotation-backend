@@ -104,7 +104,6 @@ async function main() {
     itineraire2: itineraire2.nom, 
     itineraire3: itineraire3.nom 
   });
-
   // Créer quelques véhicules de test
   const vehicule1 = await prisma.vehicule.create({
     data: {
@@ -118,6 +117,7 @@ async function main() {
       itineraireId: itineraire1.id,
       codeUnique: 'VH001234',
       anneeEnregistrement: 2021,
+      prixEnregistrement: 50000,
       proprietaireId: proprietaire1.id,
       createdById: admin.id,
     },
@@ -135,6 +135,7 @@ async function main() {
       itineraireId: itineraire2.id,
       codeUnique: 'VH005678',
       anneeEnregistrement: 2020,
+      prixEnregistrement: 25000,
       proprietaireId: proprietaire2.id,
       createdById: user.id,
     },

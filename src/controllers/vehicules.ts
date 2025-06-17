@@ -314,9 +314,7 @@ export async function getVehicules(req: Request, res: Response) {
 
     if (anneeFabrication) {
       where.anneeFabrication = parseInt(anneeFabrication as string);
-    }
-
-    const [vehicules, total] = await Promise.all([
+    }    const [vehicules, total] = await Promise.all([
       db.vehicule.findMany({
         where,        include: {
           proprietaire: {
@@ -330,6 +328,15 @@ export async function getVehicules(req: Request, res: Response) {
               typePiece: true,
               lieuDelivrance: true,
               dateDelivrance: true
+            }
+          },
+          itineraire: {
+            select: {
+              id: true,
+              nom: true,
+              description: true,
+              distance: true,
+              duree: true
             }
           },
           createdBy: {
@@ -350,7 +357,7 @@ export async function getVehicules(req: Request, res: Response) {
         orderBy: { createdAt: "desc" }
       }),
       db.vehicule.count({ where })
-    ]);    return res.status(200).json({
+    ]);return res.status(200).json({
       data: {
         items: transformVehicules(vehicules),  // Changé de "vehicules" à "items" pour cohérence
         pagination: {
