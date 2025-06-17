@@ -72,7 +72,7 @@ async function main() {
       description: 'Desserte entre le centre-ville et l\'aéroport international',
       distance: 25.5,
       duree: 45,
-      isActive: true,
+      //isActive: true,
       createdById: admin.id,
     },
   });
@@ -83,7 +83,7 @@ async function main() {
       description: 'Liaison entre la gare centrale et le campus universitaire',
       distance: 12.3,
       duree: 25,
-      isActive: true,
+      //isActive: true,
       createdById: admin.id,
     },
   });
@@ -94,7 +94,7 @@ async function main() {
       description: 'Desserte des quartiers résidentiels périphériques',
       distance: 18.7,
       duree: 35,
-      isActive: true,
+    //  isActive: true,
       createdById: user.id,
     },
   });

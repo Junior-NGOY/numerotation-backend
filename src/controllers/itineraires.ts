@@ -26,7 +26,7 @@ function transformItineraires(itineraires: any[]): TransformedItineraire[] {
 
 // Créer un itinéraire
 export async function createItineraire(req: Request, res: Response) {
-  const { nom, description, distance, dureeEstimee } = req.body;
+  const { nom, description, distance, dureeEstimee, tarif } = req.body;
   const { userId: createdById } = getAuthenticatedUser(req);
 
   try {
@@ -40,14 +40,13 @@ export async function createItineraire(req: Request, res: Response) {
         data: null,
         error: "Un itinéraire avec ce nom existe déjà"
       });
-    }
-
-    const newItineraire = await db.itineraire.create({
+    }    const newItineraire = await db.itineraire.create({
       data: {
         nom,
         description,
         distance: distance ? parseFloat(distance) : null,
         duree: dureeEstimee ? parseInt(dureeEstimee) : null,
+        tarif: tarif ? parseInt(tarif) : null,
         createdById
       },
       include: {
@@ -91,13 +90,12 @@ export async function createItineraire(req: Request, res: Response) {
 // Obtenir tous les itinéraires
 export async function getItineraires(req: Request, res: Response) {
   try {
-    const {
-      page = 1,
+    const {      page = 1,
       limit = 10,
       search = "",
       sortBy = "createdAt",
       sortOrder = "desc",
-      isActive
+      statut
     } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -113,8 +111,8 @@ export async function getItineraires(req: Request, res: Response) {
       ];
     }
 
-    if (isActive !== undefined) {
-      where.isActive = isActive === 'true';
+    if (statut !== undefined) {
+      where.statut = statut as string;
     }
 
     // Options de tri
@@ -228,7 +226,7 @@ export async function getItineraireById(req: Request, res: Response) {
 // Mettre à jour un itinéraire
 export async function updateItineraire(req: Request, res: Response) {
   const { id } = req.params;
-  const { nom, description, distance, dureeEstimee, isActive } = req.body;
+  const { nom, description, distance, dureeEstimee, statut } = req.body;
   const { userId: updatedById } = getAuthenticatedUser(req);
 
   try {
@@ -256,14 +254,13 @@ export async function updateItineraire(req: Request, res: Response) {
           error: "Un itinéraire avec ce nom existe déjà"
         });
       }
-    }
-
-    // Construire les données de mise à jour
+    }    // Construire les données de mise à jour
     const updateData: any = {};
     if (nom) updateData.nom = nom;
-    if (description !== undefined) updateData.description = description;    if (distance !== undefined) updateData.distance = distance ? parseFloat(distance) : null;
+    if (description !== undefined) updateData.description = description;
+    if (distance !== undefined) updateData.distance = distance ? parseFloat(distance) : null;
     if (dureeEstimee !== undefined) updateData.duree = dureeEstimee ? parseInt(dureeEstimee) : null;
-    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+    if (statut !== undefined) updateData.statut = statut;
 
     const updatedItineraire = await db.itineraire.update({
       where: { id },
@@ -373,11 +370,10 @@ export async function getItinerairesStats(req: Request, res: Response) {
   try {    const [
       totalItineraires,
       activeItineraires,
-      itinerairesWithVehicules,
-      vehiculesCount
+      itinerairesWithVehicules,      vehiculesCount
     ] = await Promise.all([
       db.itineraire.count(),
-      db.itineraire.count({ where: { isActive: true } }),
+      db.itineraire.count({ where: { statut: 'ACTIF' } }),
       db.itineraire.count({
         where: {
           vehicules: {
@@ -415,7 +411,7 @@ export async function getItinerairesStats(req: Request, res: Response) {
 export async function getActiveItineraires(req: Request, res: Response) {
   try {
     const itineraires = await db.itineraire.findMany({
-      where: { isActive: true },
+      where: { statut: 'ACTIF' },
       select: {
         id: true,
         nom: true,
