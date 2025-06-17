@@ -12,6 +12,7 @@ const documents_1 = __importDefault(require("./routes/documents"));
 const audit_1 = __importDefault(require("./routes/audit"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const storage_1 = __importDefault(require("./routes/storage"));
+const itineraires_1 = __importDefault(require("./routes/itineraires"));
 const auth_1 = require("./middleware/auth");
 const upload_1 = require("./config/upload");
 require("dotenv").config();
@@ -31,6 +32,7 @@ app.use("/api/v1/documents", documents_1.default);
 app.use("/api/v1/audit", audit_1.default);
 app.use("/api/v1/dashboard", dashboard_1.default);
 app.use("/api/v1/storage", storage_1.default);
+app.use("/api/v1/itineraires", itineraires_1.default);
 app.get("/health", (req, res) => {
     res.status(200).json({
         status: "OK",

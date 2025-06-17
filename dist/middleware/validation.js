@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.idParamSchema = exports.paginationSchema = exports.updateDocumentSchema = exports.uploadDocumentSchema = exports.updateVehiculeSchema = exports.createVehiculeSchema = exports.updateProprietaireSchema = exports.createProprietaireSchema = exports.changePasswordSchema = exports.updateUserSchema = exports.loginUserSchema = exports.createUserSchema = void 0;
+exports.updateItineraireSchema = exports.createItineraireSchema = exports.idParamSchema = exports.paginationSchema = exports.updateDocumentSchema = exports.uploadDocumentSchema = exports.updateVehiculeSchema = exports.createVehiculeSchema = exports.updateProprietaireSchema = exports.createProprietaireSchema = exports.changePasswordSchema = exports.updateUserSchema = exports.loginUserSchema = exports.createUserSchema = void 0;
 const zod_1 = require("zod");
 exports.createUserSchema = zod_1.z.object({
     body: zod_1.z.object({
@@ -73,7 +73,8 @@ exports.createVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)),
-        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié"), codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
+        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide").optional(),
+        codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
@@ -96,7 +97,7 @@ exports.updateVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)).optional(),
-        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié").optional(),
+        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide").optional(),
         codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),
@@ -133,5 +134,36 @@ exports.paginationSchema = zod_1.z.object({
 exports.idParamSchema = zod_1.z.object({
     params: zod_1.z.object({
         id: zod_1.z.string().cuid("ID invalide")
+    })
+});
+exports.createItineraireSchema = zod_1.z.object({ body: zod_1.z.object({
+        nom: zod_1.z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+        description: zod_1.z.string().optional(),
+        distance: zod_1.z.union([
+            zod_1.z.string().transform((val) => val ? parseFloat(val) : null),
+            zod_1.z.number(),
+            zod_1.z.null()
+        ]).optional(),
+        dureeEstimee: zod_1.z.union([
+            zod_1.z.string().transform((val) => val ? parseInt(val, 10) : null),
+            zod_1.z.number(),
+            zod_1.z.null()
+        ]).optional()
+    })
+});
+exports.updateItineraireSchema = zod_1.z.object({
+    body: zod_1.z.object({
+        nom: zod_1.z.string().min(2, "Le nom doit contenir au moins 2 caractères").optional(),
+        description: zod_1.z.string().optional(),
+        distance: zod_1.z.union([zod_1.z.string().transform((val) => val ? parseFloat(val) : null),
+            zod_1.z.number(),
+            zod_1.z.null()
+        ]).optional(),
+        dureeEstimee: zod_1.z.union([
+            zod_1.z.string().transform((val) => val ? parseInt(val, 10) : null),
+            zod_1.z.number(),
+            zod_1.z.null()
+        ]).optional(),
+        isActive: zod_1.z.boolean().optional()
     })
 });

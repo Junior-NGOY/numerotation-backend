@@ -79,7 +79,8 @@ export const createVehiculeSchema = z.object({
     capaciteAssises: z.union([
       z.string().transform((val) => parseInt(val, 10)),
       z.number()    ]).pipe(z.number().int().min(1).max(100)),
-    itineraire: z.string().min(5, "L'itinéraire doit être spécifié"),    codeUnique: z.string().min(8, "Code unique invalide").optional(),
+    itineraireId: z.string().cuid("ID itinéraire invalide").optional(),
+    codeUnique: z.string().min(8, "Code unique invalide").optional(),
     anneeEnregistrement: z.union([
       z.string().transform((val) => parseInt(val, 10)),
       z.number()
@@ -103,7 +104,7 @@ export const updateVehiculeSchema = z.object({
       z.string().transform((val) => parseInt(val, 10)),
       z.number()
     ]).pipe(z.number().int().min(1).max(100)).optional(),
-    itineraire: z.string().min(5, "L'itinéraire doit être spécifié").optional(),
+    itineraireId: z.string().cuid("ID itinéraire invalide").optional(),
     codeUnique: z.string().min(8, "Code unique invalide").optional(),
     anneeEnregistrement: z.union([
       z.string().transform((val) => parseInt(val, 10)),
@@ -146,5 +147,39 @@ export const paginationSchema = z.object({
 export const idParamSchema = z.object({
   params: z.object({
     id: z.string().cuid("ID invalide")
+  })
+});
+
+// Schémas de validation pour les itinéraires
+export const createItineraireSchema = z.object({  body: z.object({
+    nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+    description: z.string().optional(),
+    distance: z.union([
+      z.string().transform((val) => val ? parseFloat(val) : null),
+      z.number(),
+      z.null()
+    ]).optional(),
+    dureeEstimee: z.union([
+      z.string().transform((val) => val ? parseInt(val, 10) : null),
+      z.number(),
+      z.null()
+    ]).optional()
+  })
+});
+
+export const updateItineraireSchema = z.object({
+  body: z.object({
+    nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères").optional(),
+    description: z.string().optional(),
+    distance: z.union([      z.string().transform((val) => val ? parseFloat(val) : null),
+      z.number(),
+      z.null()
+    ]).optional(),
+    dureeEstimee: z.union([
+      z.string().transform((val) => val ? parseInt(val, 10) : null),
+      z.number(),
+      z.null()
+    ]).optional(),
+    isActive: z.boolean().optional()
   })
 });

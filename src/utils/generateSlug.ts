@@ -43,7 +43,7 @@ export async function getNextVehicleSequence(year: number, numeroImmatriculation
     // Chercher tous les véhicules enregistrés pour cette année
     const yearPrefix = `LSH-${year.toString().slice(-2)}-`;
     
-    console.log(`🔍 Recherche de tous les véhicules pour l'année ${year}`);
+    console.log(`🔍 [SEQUENCE] Recherche véhicules pour l'année ${year} avec préfixe: ${yearPrefix}`);
     
     const vehicules = await db.vehicule.findMany({
       where: {
@@ -56,30 +56,40 @@ export async function getNextVehicleSequence(year: number, numeroImmatriculation
       }
     });
 
+    console.log(`📊 [SEQUENCE] ${vehicules.length} véhicule(s) trouvé(s) pour l'année ${year}`);
+
     if (vehicules.length === 0) {
-      console.log(`✨ Premier véhicule pour l'année ${year}, séquence: 1`);
+      console.log(`✨ [SEQUENCE] Premier véhicule pour l'année ${year}, séquence: 1`);
       return 1;
     }
     
     // Extraire tous les numéros de séquence et trouver le maximum
     let maxSequence = 0;
     
+    console.log(`🔢 [SEQUENCE] Analyse des codes existants:`);
     for (const vehicule of vehicules) {
       const codeUnique = vehicule.codeUnique;
+      console.log(`   - Code: ${codeUnique}`);
+      
       // Format: LSH-25-XY000001, on veut extraire "000001"
       const parts = codeUnique.split('-');
       if (parts.length === 3) {
         const sequencePart = parts[2].substring(2); // Prendre après les 2 lettres
         const sequenceNum = parseInt(sequencePart, 10);
+        console.log(`     → Séquence extraite: ${sequencePart} → ${sequenceNum}`);
+        
         if (!isNaN(sequenceNum) && sequenceNum > maxSequence) {
           maxSequence = sequenceNum;
+          console.log(`     → Nouveau maximum: ${maxSequence}`);
         }
+      } else {
+        console.log(`     → Format invalide, ignoré`);
       }
     }
     
     const nextSequence = maxSequence + 1;
     
-    console.log(`📈 Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
+    console.log(`📈 [SEQUENCE] Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
     
     return nextSequence;
     

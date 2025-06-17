@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createVehicule = createVehicule;
 exports.getVehicules = getVehicules;
@@ -36,7 +47,7 @@ function determineDocumentType(filename) {
 }
 function createVehicule(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraire, codeUnique: providedCodeUnique, anneeEnregistrement, proprietaireId } = req.body;
+        const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraireId, codeUnique: providedCodeUnique, anneeEnregistrement, proprietaireId } = req.body;
         const { userId: createdById } = (0, types_1.getAuthenticatedUser)(req);
         try {
             const anneeFabricationInt = parseInt(anneeFabrication);
@@ -122,7 +133,7 @@ function createVehicule(req, res) {
                     numeroChassis,
                     anneeFabrication: anneeFabricationInt,
                     capaciteAssises: capaciteAssisesInt,
-                    itineraire,
+                    itineraireId,
                     codeUnique,
                     anneeEnregistrement: finalAnneeEnregistrement,
                     prixEnregistrement,
@@ -136,6 +147,15 @@ function createVehicule(req, res) {
                             nom: true,
                             prenom: true,
                             telephone: true
+                        }
+                    },
+                    itineraire: {
+                        select: {
+                            id: true,
+                            nom: true,
+                            description: true,
+                            distance: true,
+                            duree: true
                         }
                     },
                     createdBy: {
@@ -217,7 +237,7 @@ function createVehicule(req, res) {
                 }
             });
             return res.status(201).json({
-                data: newVehicule,
+                data: transformVehiculeItineraire(newVehicule),
                 error: null
             });
         }
@@ -299,7 +319,7 @@ function getVehicules(req, res) {
             ]);
             return res.status(200).json({
                 data: {
-                    items: vehicules,
+                    items: transformVehicules(vehicules),
                     pagination: {
                         page: Number(page),
                         limit: Number(limit),
@@ -327,6 +347,15 @@ function getVehiculeById(req, res) {
                 where: { id },
                 include: {
                     proprietaire: true,
+                    itineraire: {
+                        select: {
+                            id: true,
+                            nom: true,
+                            description: true,
+                            distance: true,
+                            duree: true
+                        }
+                    },
                     createdBy: {
                         select: {
                             id: true,
@@ -359,7 +388,7 @@ function getVehiculeById(req, res) {
                 });
             }
             return res.status(200).json({
-                data: vehicule,
+                data: transformVehiculeItineraire(vehicule),
                 error: null
             });
         }
@@ -375,7 +404,7 @@ function getVehiculeById(req, res) {
 function updateVehicule(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { id } = req.params;
-        const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraire, codeUnique, anneeEnregistrement, proprietaireId } = req.body;
+        const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraireId, codeUnique, anneeEnregistrement, proprietaireId } = req.body;
         const { userId } = (0, types_1.getAuthenticatedUser)(req);
         try {
             let anneeFabricationInt;
@@ -452,7 +481,7 @@ function updateVehicule(req, res) {
                 numeroChassis: existingVehicule.numeroChassis,
                 anneeFabrication: existingVehicule.anneeFabrication,
                 capaciteAssises: existingVehicule.capaciteAssises,
-                itineraire: existingVehicule.itineraire,
+                itineraireId: existingVehicule.itineraireId,
                 codeUnique: existingVehicule.codeUnique,
                 anneeEnregistrement: existingVehicule.anneeEnregistrement,
                 prixEnregistrement: existingVehicule.prixEnregistrement,
@@ -462,7 +491,7 @@ function updateVehicule(req, res) {
             const prixEnregistrement = typeVehicule ? (0, pricingUtils_1.calculateRegistrationPrice)(typeVehicule) : existingVehicule.prixEnregistrement;
             const updatedVehicule = yield db_1.db.vehicule.update({
                 where: { id },
-                data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (marque && { marque })), (modele && { modele })), (typeVehicule && { typeVehicule, prixEnregistrement })), (numeroImmatriculation && { numeroImmatriculation })), (numeroChassis && { numeroChassis })), (anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt })), (capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt })), (itineraire && { itineraire })), (codeUnique && { codeUnique })), (anneeEnregistrement && { anneeEnregistrement })), (proprietaireId && { proprietaireId })),
+                data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (marque && { marque })), (modele && { modele })), (typeVehicule && { typeVehicule, prixEnregistrement })), (numeroImmatriculation && { numeroImmatriculation })), (numeroChassis && { numeroChassis })), (anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt })), (capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt })), (itineraireId && { itineraireId })), (codeUnique && { codeUnique })), (anneeEnregistrement && { anneeEnregistrement })), (proprietaireId && { proprietaireId })),
                 include: {
                     proprietaire: {
                         select: {
@@ -475,6 +504,15 @@ function updateVehicule(req, res) {
                             typePiece: true,
                             lieuDelivrance: true,
                             dateDelivrance: true
+                        }
+                    },
+                    itineraire: {
+                        select: {
+                            id: true,
+                            nom: true,
+                            description: true,
+                            distance: true,
+                            duree: true
                         }
                     },
                     createdBy: {
@@ -502,7 +540,7 @@ function updateVehicule(req, res) {
                 }
             });
             return res.status(200).json({
-                data: updatedVehicule,
+                data: transformVehiculeItineraire(updatedVehicule),
                 error: null
             });
         }
@@ -668,4 +706,16 @@ function searchVehicule(req, res) {
             });
         }
     });
+}
+function transformVehiculeItineraire(vehicule) {
+    if (!vehicule)
+        return vehicule;
+    if (vehicule.itineraire && vehicule.itineraire.duree !== undefined) {
+        const _a = vehicule.itineraire, { duree } = _a, itineraireRest = __rest(_a, ["duree"]);
+        return Object.assign(Object.assign({}, vehicule), { itineraire: Object.assign(Object.assign({}, itineraireRest), { dureeEstimee: duree }) });
+    }
+    return vehicule;
+}
+function transformVehicules(vehicules) {
+    return vehicules.map(transformVehiculeItineraire);
 }

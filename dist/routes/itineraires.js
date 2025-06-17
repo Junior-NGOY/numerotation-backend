@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const itineraires_1 = require("../controllers/itineraires");
+const auth_1 = require("../middleware/auth");
+const validateRequest_1 = require("../middleware/validateRequest");
+const validation_1 = require("../middleware/validation");
+const itineraireRouter = express_1.default.Router();
+itineraireRouter.use(auth_1.authenticateToken);
+itineraireRouter.post("/", (0, validateRequest_1.validate)(validation_1.createItineraireSchema), itineraires_1.createItineraire);
+itineraireRouter.get("/", (0, validateRequest_1.validate)(validation_1.paginationSchema), itineraires_1.getItineraires);
+itineraireRouter.get("/active", itineraires_1.getActiveItineraires);
+itineraireRouter.get("/stats", itineraires_1.getItinerairesStats);
+itineraireRouter.get("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), itineraires_1.getItineraireById);
+itineraireRouter.put("/:id", (0, validateRequest_1.validate)(validation_1.idParamSchema), (0, validateRequest_1.validate)(validation_1.updateItineraireSchema), itineraires_1.updateItineraire);
+itineraireRouter.delete("/:id", (0, auth_1.authorizeRoles)("ADMIN"), (0, validateRequest_1.validate)(validation_1.idParamSchema), itineraires_1.deleteItineraire);
+exports.default = itineraireRouter;

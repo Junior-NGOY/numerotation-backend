@@ -63,8 +63,47 @@ async function main() {
       createdById: user.id,
     },
   });
-
   console.log('✅ Propriétaires créés:', { proprietaire1: proprietaire1.nom, proprietaire2: proprietaire2.nom });
+
+  // Créer des itinéraires de test
+  const itineraire1 = await prisma.itineraire.create({
+    data: {
+      nom: 'Ligne A: Centre-ville - Aéroport',
+      description: 'Desserte entre le centre-ville et l\'aéroport international',
+      distance: 25.5,
+      duree: 45,
+      isActive: true,
+      createdById: admin.id,
+    },
+  });
+
+  const itineraire2 = await prisma.itineraire.create({
+    data: {
+      nom: 'Ligne B: Gare - Université',
+      description: 'Liaison entre la gare centrale et le campus universitaire',
+      distance: 12.3,
+      duree: 25,
+      isActive: true,
+      createdById: admin.id,
+    },
+  });
+
+  const itineraire3 = await prisma.itineraire.create({
+    data: {
+      nom: 'Ligne C: Quartier résidentiel',
+      description: 'Desserte des quartiers résidentiels périphériques',
+      distance: 18.7,
+      duree: 35,
+      isActive: true,
+      createdById: user.id,
+    },
+  });
+
+  console.log('✅ Itinéraires créés:', { 
+    itineraire1: itineraire1.nom, 
+    itineraire2: itineraire2.nom, 
+    itineraire3: itineraire3.nom 
+  });
 
   // Créer quelques véhicules de test
   const vehicule1 = await prisma.vehicule.create({
@@ -76,7 +115,7 @@ async function main() {
       numeroChassis: 'WDB9066331234567',
       anneeFabrication: 2020,
       capaciteAssises: 20,
-      itineraire: 'Paris - Versailles',
+      itineraireId: itineraire1.id,
       codeUnique: 'VH001234',
       anneeEnregistrement: 2021,
       proprietaireId: proprietaire1.id,
@@ -93,7 +132,7 @@ async function main() {
       numeroChassis: 'VF1MA000012345678',
       anneeFabrication: 2019,
       capaciteAssises: 12,
-      itineraire: 'Lyon - Saint-Étienne',
+      itineraireId: itineraire2.id,
       codeUnique: 'VH005678',
       anneeEnregistrement: 2020,
       proprietaireId: proprietaire2.id,

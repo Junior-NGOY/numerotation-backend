@@ -29,7 +29,7 @@ export async function createVehicule(req: Request, res: Response) {
     numeroChassis,
     anneeFabrication,
     capaciteAssises,
-    itineraire,
+    itineraireId,
     codeUnique: providedCodeUnique,
     anneeEnregistrement,
     proprietaireId
@@ -137,7 +137,7 @@ const newVehicule = await db.vehicule.create({
         numeroChassis,
         anneeFabrication: anneeFabricationInt,
         capaciteAssises: capaciteAssisesInt,
-        itineraire,
+        itineraireId,
         codeUnique,
         anneeEnregistrement: finalAnneeEnregistrement,
         prixEnregistrement,
@@ -151,6 +151,15 @@ const newVehicule = await db.vehicule.create({
             nom: true,
             prenom: true,
             telephone: true
+          }
+        },
+        itineraire: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+            distance: true,
+            duree: true
           }
         },
         createdBy: {
@@ -248,10 +257,8 @@ const newVehicule = await db.vehicule.create({
         newValues: newVehicule,
         userId: createdById
       }
-    });
-
-    return res.status(201).json({
-      data: newVehicule,
+    });    return res.status(201).json({
+      data: transformVehiculeItineraire(newVehicule),
       error: null
     });
   } catch (error) {
@@ -345,7 +352,7 @@ export async function getVehicules(req: Request, res: Response) {
       db.vehicule.count({ where })
     ]);    return res.status(200).json({
       data: {
-        items: vehicules,  // Changé de "vehicules" à "items" pour cohérence
+        items: transformVehicules(vehicules),  // Changé de "vehicules" à "items" pour cohérence
         pagination: {
           page: Number(page),
           limit: Number(limit),
@@ -368,11 +375,19 @@ export async function getVehicules(req: Request, res: Response) {
 export async function getVehiculeById(req: Request, res: Response) {
   const { id } = req.params;
 
-  try {
-    const vehicule = await db.vehicule.findUnique({
+  try {    const vehicule = await db.vehicule.findUnique({
       where: { id },
       include: {
         proprietaire: true,
+        itineraire: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+            distance: true,
+            duree: true
+          }
+        },
         createdBy: {
           select: {
             id: true,
@@ -404,10 +419,8 @@ export async function getVehiculeById(req: Request, res: Response) {
         data: null,
         error: "Véhicule non trouvé"
       });
-    }
-
-    return res.status(200).json({
-      data: vehicule,
+    }    return res.status(200).json({
+      data: transformVehiculeItineraire(vehicule),
       error: null
     });
   } catch (error) {
@@ -430,7 +443,7 @@ export async function updateVehicule(req: Request, res: Response) {
     numeroChassis,
     anneeFabrication,
     capaciteAssises,
-    itineraire,
+    itineraireId,
     codeUnique,
     anneeEnregistrement,
     proprietaireId
@@ -530,7 +543,7 @@ export async function updateVehicule(req: Request, res: Response) {
       numeroChassis: existingVehicule.numeroChassis,
       anneeFabrication: existingVehicule.anneeFabrication,
       capaciteAssises: existingVehicule.capaciteAssises,
-      itineraire: existingVehicule.itineraire,
+      itineraireId: existingVehicule.itineraireId,
       codeUnique: existingVehicule.codeUnique,
       anneeEnregistrement: existingVehicule.anneeEnregistrement,
       prixEnregistrement: existingVehicule.prixEnregistrement,
@@ -550,7 +563,7 @@ export async function updateVehicule(req: Request, res: Response) {
         ...(numeroImmatriculation && { numeroImmatriculation }),
         ...(numeroChassis && { numeroChassis }),        ...(anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt }),
         ...(capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt }),
-        ...(itineraire && { itineraire }),
+        ...(itineraireId && { itineraireId }),
         ...(codeUnique && { codeUnique }),
         ...(anneeEnregistrement && { anneeEnregistrement }),        ...(proprietaireId && { proprietaireId })
       },
@@ -566,6 +579,15 @@ export async function updateVehicule(req: Request, res: Response) {
             typePiece: true,
             lieuDelivrance: true,
             dateDelivrance: true
+          }
+        },
+        itineraire: {
+          select: {
+            id: true,
+            nom: true,
+            description: true,
+            distance: true,
+            duree: true
           }
         },
         createdBy: {
@@ -593,10 +615,8 @@ export async function updateVehicule(req: Request, res: Response) {
         newValues: updatedVehicule,
         userId
       }
-    });
-
-    return res.status(200).json({
-      data: updatedVehicule,
+    });    return res.status(200).json({
+      data: transformVehiculeItineraire(updatedVehicule),
       error: null
     });
   } catch (error) {
@@ -775,4 +795,27 @@ export async function searchVehicule(req: Request, res: Response) {
       error: "Erreur interne du serveur"
     });
   }
+}
+
+// Helper function to transform itinerary data in vehicle objects
+function transformVehiculeItineraire(vehicule: any) {
+  if (!vehicule) return vehicule;
+  
+  if (vehicule.itineraire && vehicule.itineraire.duree !== undefined) {
+    const { duree, ...itineraireRest } = vehicule.itineraire;
+    return {
+      ...vehicule,
+      itineraire: {
+        ...itineraireRest,
+        dureeEstimee: duree
+      }
+    };
+  }
+  
+  return vehicule;
+}
+
+// Helper function to transform array of vehicles
+function transformVehicules(vehicules: any[]) {
+  return vehicules.map(transformVehiculeItineraire);
 }

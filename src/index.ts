@@ -7,6 +7,7 @@ import documentRouter from "./routes/documents";
 import auditRouter from "./routes/audit";
 import dashboardRouter from "./routes/dashboard";
 import storageRouter from "./routes/storage";
+import itineraireRouter from "./routes/itineraires";
 import { logRequest } from "./middleware/auth";
 import { initializeUploadDirectories } from "./config/upload";
 
@@ -37,6 +38,7 @@ app.use("/api/v1/documents", documentRouter);
 app.use("/api/v1/audit", auditRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/storage", storageRouter);
+app.use("/api/v1/itineraires", itineraireRouter);
 
 // Route de santé
 app.get("/health", (req, res) => {

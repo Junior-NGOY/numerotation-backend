@@ -41,7 +41,7 @@ function getNextVehicleSequence(year, numeroImmatriculation) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const yearPrefix = `LSH-${year.toString().slice(-2)}-`;
-            console.log(`🔍 Recherche de tous les véhicules pour l'année ${year}`);
+            console.log(`🔍 [SEQUENCE] Recherche véhicules pour l'année ${year} avec préfixe: ${yearPrefix}`);
             const vehicules = yield db_1.db.vehicule.findMany({
                 where: {
                     codeUnique: {
@@ -52,24 +52,32 @@ function getNextVehicleSequence(year, numeroImmatriculation) {
                     codeUnique: true
                 }
             });
+            console.log(`📊 [SEQUENCE] ${vehicules.length} véhicule(s) trouvé(s) pour l'année ${year}`);
             if (vehicules.length === 0) {
-                console.log(`✨ Premier véhicule pour l'année ${year}, séquence: 1`);
+                console.log(`✨ [SEQUENCE] Premier véhicule pour l'année ${year}, séquence: 1`);
                 return 1;
             }
             let maxSequence = 0;
+            console.log(`🔢 [SEQUENCE] Analyse des codes existants:`);
             for (const vehicule of vehicules) {
                 const codeUnique = vehicule.codeUnique;
+                console.log(`   - Code: ${codeUnique}`);
                 const parts = codeUnique.split('-');
                 if (parts.length === 3) {
                     const sequencePart = parts[2].substring(2);
                     const sequenceNum = parseInt(sequencePart, 10);
+                    console.log(`     → Séquence extraite: ${sequencePart} → ${sequenceNum}`);
                     if (!isNaN(sequenceNum) && sequenceNum > maxSequence) {
                         maxSequence = sequenceNum;
+                        console.log(`     → Nouveau maximum: ${maxSequence}`);
                     }
+                }
+                else {
+                    console.log(`     → Format invalide, ignoré`);
                 }
             }
             const nextSequence = maxSequence + 1;
-            console.log(`📈 Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
+            console.log(`📈 [SEQUENCE] Plus grande séquence trouvée: ${maxSequence}, prochaine séquence: ${nextSequence}`);
             return nextSequence;
         }
         catch (error) {
