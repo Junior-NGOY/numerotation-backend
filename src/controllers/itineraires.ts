@@ -77,7 +77,8 @@ export async function createItineraire(req: Request, res: Response) {
 // Obtenir tous les itinéraires
 export async function getItineraires(req: Request, res: Response) {
   try {
-    const {      page = 1,
+    const {      
+      page = 1,
       limit = 10,      search = "",
       sortBy = "createdAt",
       sortOrder = "desc",
@@ -125,11 +126,9 @@ export async function getItineraires(req: Request, res: Response) {
       db.itineraire.count({ where })
     ]);
 
-    const totalPages = Math.ceil(total / take);
-
-    return res.status(200).json({
+    const totalPages = Math.ceil(total / take);    return res.status(200).json({
       data: {
-        itineraires: transformItineraires(itineraires),
+        items: transformItineraires(itineraires),
         pagination: {
           page: Number(page),
           limit: Number(limit),
