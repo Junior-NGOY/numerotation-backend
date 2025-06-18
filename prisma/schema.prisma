@@ -1,4 +1,5 @@
 // This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -10,15 +11,15 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String   @id @default(cuid())
+  email     String   @unique
   name      String
   password  String
-  role      Role      @default(USER)
-  isActive  Boolean   @default(true)
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
   lastLogin DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   createdProprietaires Proprietaire[] @relation("CreatedBy")
@@ -30,96 +31,95 @@ model User {
 }
 
 model Proprietaire {
-  id             String    @id @default(cuid())
-  nom            String
-  prenom         String
-  adresse        String
-  telephone      String
-  numeroPiece    String    @unique
-  typePiece      TypePiece
-  lieuDelivrance String
-  dateDelivrance DateTime
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id               String   @id @default(cuid())
+  nom              String
+  prenom           String
+  adresse          String
+  telephone        String
+  numeroPiece      String   @unique
+  typePiece        TypePiece
+  lieuDelivrance   String
+  dateDelivrance   DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  vehicules   Vehicule[]
-  documents   Document[]
-  createdBy   User       @relation("CreatedBy", fields: [createdById], references: [id])
-  createdById String
+  vehicules        Vehicule[]
+  documents        Document[]
+  createdBy        User       @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById      String
 
   @@map("proprietaires")
 }
 
 model Vehicule {
-  id                    String       @id @default(cuid())
+  id                    String   @id @default(cuid())
   marque                String
   modele                String
   typeVehicule          TypeVehicule
-  numeroImmatriculation String       @unique
-  numeroChassis         String       @unique
+  numeroImmatriculation String   @unique
+  numeroChassis         String   @unique
   anneeFabrication      Int
   capaciteAssises       Int
-  codeUnique            String       @unique
+  codeUnique            String   @unique
   anneeEnregistrement   Int
-  prixEnregistrement    Int          @default(30000) // Prix en francs CFA selon le type de véhicule
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
+  prixEnregistrement    Int      @default(30000) // Prix en francs CFA selon le type de véhicule
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Relations
-  proprietaire   Proprietaire @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
-  proprietaireId String
-  itineraire     Itineraire   @relation(fields: [itineraireId], references: [id])
-  itineraireId   String
-  documents      Document[]
-  createdBy      User         @relation("CreatedBy", fields: [createdById], references: [id])
-  createdById    String
+  proprietaire          Proprietaire @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
+  proprietaireId        String
+  itineraire            Itineraire   @relation(fields: [itineraireId], references: [id])
+  itineraireId          String
+  documents             Document[]
+  createdBy             User         @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById           String
 
   @@map("vehicules")
 }
 
 model Itineraire {
-  id          String           @id @default(cuid())
-  nom         String           @unique
+  id          String     @id @default(cuid())
+  nom         String     @unique
   description String?
-  distance    Float? // Distance en kilomètres
-  duree       Int? // Durée en minutes
-  tarif       Int? // Tarif en francs CFA
-  statut      StatutItineraire @default(ACTIF)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
+  distance    Float?
+  duree       Int?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
   // Relations
-  vehicules   Vehicule[]
   createdBy   User       @relation("CreatedBy", fields: [createdById], references: [id])
   createdById String
+  vehicules   Vehicule[]
 
   @@map("itineraires")
 }
 
 model Document {
-  id        String       @id @default(cuid())
-  nom       String
-  type      TypeDocument
-  chemin    String
-  taille    Int?
-  mimeType  String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id           String      @id @default(cuid())
+  nom          String
+  type         TypeDocument
+  chemin       String
+  taille       Int?
+  mimeType     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   // Relations
-  proprietaire   Proprietaire? @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
+  proprietaire Proprietaire? @relation(fields: [proprietaireId], references: [id], onDelete: Cascade)
   proprietaireId String?
-  vehicule       Vehicule?     @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
-  vehiculeId     String?
-  createdBy      User          @relation("CreatedBy", fields: [createdById], references: [id])
-  createdById    String
+  vehicule     Vehicule?     @relation(fields: [vehiculeId], references: [id], onDelete: Cascade)
+  vehiculeId   String?
+  createdBy    User          @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById  String
 
   @@map("documents")
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   action    String
   table     String
   recordId  String
@@ -127,7 +127,7 @@ model AuditLog {
   newValues Json?
   userId    String?
   userEmail String?
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 
   @@map("audit_logs")
 }
@@ -148,6 +148,7 @@ enum TypeVehicule {
   BUS
   MINI_BUS
   TAXI
+ 
 }
 
 enum TypeDocument {
@@ -156,10 +157,4 @@ enum TypeDocument {
   CARTE_ROSE
   PDF_COMPLET
   QR_CODE
-}
-
-enum StatutItineraire {
-  ACTIF
-  INACTIF
-  SUSPENDU
 }

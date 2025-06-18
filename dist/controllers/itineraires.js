@@ -41,7 +41,7 @@ function transformItineraires(itineraires) {
 function createItineraire(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { nom, description, distance, dureeEstimee } = req.body;
-        const { userId: createdById } = (0, types_1.getAuthenticatedUser)(req);
+        const { userId } = (0, types_1.getAuthenticatedUser)(req);
         try {
             const existingItineraire = yield db_1.db.itineraire.findUnique({
                 where: { nom }
@@ -58,21 +58,7 @@ function createItineraire(req, res) {
                     description,
                     distance: distance ? parseFloat(distance) : null,
                     duree: dureeEstimee ? parseInt(dureeEstimee) : null,
-                    createdById
-                },
-                include: {
-                    createdBy: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true
-                        }
-                    },
-                    _count: {
-                        select: {
-                            vehicules: true
-                        }
-                    }
+                    createdById: userId
                 }
             });
             yield db_1.db.auditLog.create({
@@ -81,7 +67,7 @@ function createItineraire(req, res) {
                     table: "Itineraire",
                     recordId: newItineraire.id,
                     newValues: newItineraire,
-                    userId: createdById
+                    userId: userId
                 }
             });
             return res.status(201).json({
