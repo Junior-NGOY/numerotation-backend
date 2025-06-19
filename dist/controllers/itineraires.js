@@ -128,7 +128,7 @@ function getItineraires(req, res) {
             const totalPages = Math.ceil(total / take);
             return res.status(200).json({
                 data: {
-                    itineraires: transformItineraires(itineraires),
+                    items: transformItineraires(itineraires),
                     pagination: {
                         page: Number(page),
                         limit: Number(limit),
