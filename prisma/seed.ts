@@ -65,14 +65,13 @@ async function main() {
   });
   console.log('✅ Propriétaires créés:', { proprietaire1: proprietaire1.nom, proprietaire2: proprietaire2.nom });
 
-  // Créer des itinéraires de test
-  const itineraire1 = await prisma.itineraire.create({
+  // Créer des itinéraires de test  const itineraire1 = await prisma.itineraire.create({
     data: {
       nom: 'Ligne A: Centre-ville - Aéroport',
-      description: 'Desserte entre le centre-ville et l\'aéroport international',
+      description: 'Desserte entre le centre-ville et l\'aeroport international',
       distance: 25.5,
       duree: 45,
-      //isActive: true,
+      isActive: true,
       createdById: admin.id,
     },
   });
@@ -83,7 +82,7 @@ async function main() {
       description: 'Liaison entre la gare centrale et le campus universitaire',
       distance: 12.3,
       duree: 25,
-      //isActive: true,
+      isActive: true,
       createdById: admin.id,
     },
   });
@@ -94,7 +93,7 @@ async function main() {
       description: 'Desserte des quartiers résidentiels périphériques',
       distance: 18.7,
       duree: 35,
-    //  isActive: true,
+      isActive: true,
       createdById: user.id,
     },
   });

@@ -9,6 +9,7 @@ const auth_1 = require("../middleware/auth");
 const validateRequest_1 = require("../middleware/validateRequest");
 const validation_1 = require("../middleware/validation");
 const itineraireRouter = express_1.default.Router();
+itineraireRouter.get("/public/active", itineraires_1.getActiveItineraires);
 itineraireRouter.use(auth_1.authenticateToken);
 itineraireRouter.post("/", (0, validateRequest_1.validate)(validation_1.createItineraireSchema), itineraires_1.createItineraire);
 itineraireRouter.get("/", (0, validateRequest_1.validate)(validation_1.paginationSchema), itineraires_1.getItineraires);

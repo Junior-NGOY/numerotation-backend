@@ -19,7 +19,10 @@ import {
 
 const itineraireRouter = express.Router();
 
-// Toutes les routes nécessitent une authentification
+// Route publique pour les itinéraires actifs (utilisée par les selects)
+itineraireRouter.get("/public/active", getActiveItineraires);
+
+// Toutes les autres routes nécessitent une authentification
 itineraireRouter.use(authenticateToken);
 
 // Routes CRUD
