@@ -6,6 +6,7 @@ import vehiculeRouter from "./routes/vehicules";
 import documentRouter from "./routes/documents";
 import auditRouter from "./routes/audit";
 import dashboardRouter from "./routes/dashboard";
+import verificationRouter from "./routes/verification";
 import { logRequest } from "./middleware/auth";
 import { initializeUploadDirectories } from "./config/upload";
 
@@ -35,6 +36,7 @@ app.use("/api/v1/vehicules", vehiculeRouter);
 app.use("/api/v1/documents", documentRouter);
 app.use("/api/v1/audit", auditRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
+app.use("/api/v1/verify", verificationRouter); // Route publique de vérification
 
 // Route de santé
 app.get("/health", (req, res) => {

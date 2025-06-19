@@ -11,6 +11,7 @@ const vehicules_1 = __importDefault(require("./routes/vehicules"));
 const documents_1 = __importDefault(require("./routes/documents"));
 const audit_1 = __importDefault(require("./routes/audit"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
+const verification_1 = __importDefault(require("./routes/verification"));
 const auth_1 = require("./middleware/auth");
 const upload_1 = require("./config/upload");
 require("dotenv").config();
@@ -29,6 +30,7 @@ app.use("/api/v1/vehicules", vehicules_1.default);
 app.use("/api/v1/documents", documents_1.default);
 app.use("/api/v1/audit", audit_1.default);
 app.use("/api/v1/dashboard", dashboard_1.default);
+app.use("/api/v1/verify", verification_1.default);
 app.get("/health", (req, res) => {
     res.status(200).json({
         status: "OK",
