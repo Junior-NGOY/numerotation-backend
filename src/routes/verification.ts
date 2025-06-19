@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyVehicleByCode, getVerificationStats } from '../controllers/verification';
+import { verifyVehicleByCode, getVerificationStats } from '../controllers/verification-prod';
 
 const router = Router();
 
