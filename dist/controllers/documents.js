@@ -905,9 +905,20 @@ function getDocumentPreview(req, res) {
                     error: "Document non trouvé"
                 });
             }
-            const baseUrl = process.env.NODE_ENV === 'production'
-                ? process.env.PRODUCTION_URL || 'http://localhost:8000'
-                : 'http://localhost:8000';
+            let baseUrl;
+            if (process.env.NODE_ENV === 'production' && process.env.PRODUCTION_URL) {
+                baseUrl = process.env.PRODUCTION_URL;
+                console.log('🔧 Utilisation de PRODUCTION_URL:', baseUrl);
+            }
+            else if (req.headers.host) {
+                const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+                baseUrl = `${protocol}://${req.headers.host}`;
+                console.log('🔧 URL détectée automatiquement:', baseUrl);
+            }
+            else {
+                baseUrl = 'http://localhost:8000';
+                console.log('🔧 Utilisation du fallback:', baseUrl);
+            }
             let fileUrl = `${baseUrl}/api/v1/access/documents/${document.id}/file`;
             if (token) {
                 fileUrl += `?token=${encodeURIComponent(token)}`;

@@ -1040,9 +1040,22 @@ export async function getDocumentPreview(req: Request, res: Response) {
         error: "Document non trouvé"
       });
     }    // Générer l'URL complète du fichier avec token si disponible
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.PRODUCTION_URL || 'http://localhost:8000'
-      : 'http://localhost:8000';
+    // Détecter l'URL de base à partir de la requête ou utiliser la configuration
+    let baseUrl: string;
+    
+    if (process.env.NODE_ENV === 'production' && process.env.PRODUCTION_URL) {
+      baseUrl = process.env.PRODUCTION_URL;
+      console.log('🔧 Utilisation de PRODUCTION_URL:', baseUrl);
+    } else if (req.headers.host) {
+      // Détecter automatiquement à partir de la requête
+      const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+      baseUrl = `${protocol}://${req.headers.host}`;
+      console.log('🔧 URL détectée automatiquement:', baseUrl);
+    } else {
+      // Fallback
+      baseUrl = 'http://localhost:8000';
+      console.log('🔧 Utilisation du fallback:', baseUrl);
+    }
     
     let fileUrl = `${baseUrl}/api/v1/access/documents/${document.id}/file`;
     
