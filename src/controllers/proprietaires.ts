@@ -94,20 +94,11 @@ export async function createProprietaire(req: Request, res: Response) {
             console.log('🗑️ Fichier local supprimé après upload PINATA');
           } catch (unlinkError) {
             console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
-          }
-
-          console.log('✅ Pièce d\'identité uploadée vers PINATA:', pinataUrl);
+          }          console.log('✅ Pièce d\'identité uploadée vers PINATA:', pinataUrl);
         } else {
-          // Fallback vers stockage local
-          console.log('💾 Stockage local de la pièce d\'identité (PINATA non configuré)');          documentData = {
-            nom: `Pièce d'identité - ${nom} ${prenom}`,
-            type: 'PIECE_IDENTITE',
-            chemin: req.file.path,
-            taille: req.file.size,
-            mimeType: req.file.mimetype,
-            proprietaireId: newProprietaire.id,
-            createdById
-          };
+          // PINATA n'est pas configuré - retourner une erreur
+          console.error('❌ PINATA non configuré, impossible d\'uploader la pièce d\'identité');
+          throw new Error('Service de stockage de fichiers non configuré. Veuillez configurer PINATA.');
         }
 
         // Créer l'enregistrement du document
@@ -379,7 +370,8 @@ export async function updateProprietaire(req: Request, res: Response) {
 }
 
 // Supprimer un propriétaire
-export async function deleteProprietaire(req: Request, res: Response) {  const { id } = req.params;
+export async function deleteProprietaire(req: Request, res: Response) {
+  const { id } = req.params;
   
   const { userId } = getAuthenticatedUser(req);
 
@@ -387,6 +379,7 @@ export async function deleteProprietaire(req: Request, res: Response) {  const {
     const proprietaire = await db.proprietaire.findUnique({
       where: { id },
       include: {
+        documents: true, // Récupérer le document associé
         _count: {
           select: {
             vehicules: true
@@ -410,6 +403,43 @@ export async function deleteProprietaire(req: Request, res: Response) {  const {
       });
     }
 
+    // Supprimer le document associé au propriétaire s'il existe
+    if (proprietaire.documents && proprietaire.documents.length > 0) {
+      console.log(`🗑️ Suppression du document du propriétaire ${id}`);
+      
+      for (const document of proprietaire.documents) {
+        try {
+          // Supprimer le fichier de Pinata si l'URL contient un hash IPFS
+          if (document.chemin && document.chemin.includes('ipfs')) {
+            const ipfsHashMatch = document.chemin.match(/\/ipfs\/([^?]+)/);
+            if (ipfsHashMatch) {
+              const ipfsHash = ipfsHashMatch[1];
+              console.log(`🗑️ Suppression du fichier IPFS: ${ipfsHash}`);
+              
+              // Import dynamique du service Pinata
+              const { pinataService } = await import('@/services/pinata');
+              if (pinataService.isConfigured()) {
+                try {
+                  await pinataService.unpinFile(ipfsHash);
+                  console.log(`✅ Fichier IPFS supprimé: ${ipfsHash}`);
+                } catch (pinataError) {
+                  console.warn(`⚠️ Erreur lors de la suppression du fichier IPFS ${ipfsHash}:`, pinataError);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Erreur lors de la suppression du fichier pour le document ${document.id}:`, error);
+        }
+      }
+
+      // Supprimer les documents de la base de données
+      await db.document.deleteMany({
+        where: { proprietaireId: id }
+      });
+    }
+
+    // Supprimer le propriétaire
     await db.proprietaire.delete({
       where: { id }
     });
@@ -420,13 +450,19 @@ export async function deleteProprietaire(req: Request, res: Response) {  const {
         action: "DELETE",
         table: "Proprietaire",
         recordId: id,
-        oldValues: proprietaire,
+        oldValues: { 
+          ...proprietaire, 
+          documentsDeleted: proprietaire.documents?.length || 0 
+        },
         userId
       }
     });
 
     return res.status(200).json({
-      data: { message: "Propriétaire supprimé avec succès" },
+      data: { 
+        message: "Propriétaire supprimé avec succès",
+        documentsDeleted: proprietaire.documents?.length || 0
+      },
       error: null
     });
   } catch (error) {

@@ -9,6 +9,7 @@ const users_1 = __importDefault(require("./routes/users"));
 const proprietaires_1 = __importDefault(require("./routes/proprietaires"));
 const vehicules_1 = __importDefault(require("./routes/vehicules"));
 const documents_1 = __importDefault(require("./routes/documents"));
+const documents_access_1 = __importDefault(require("./routes/documents-access"));
 const audit_1 = __importDefault(require("./routes/audit"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 const itineraires_1 = __importDefault(require("./routes/itineraires"));
@@ -30,11 +31,13 @@ app.use("/api/v1/users", users_1.default);
 app.use("/api/v1/proprietaires", proprietaires_1.default);
 app.use("/api/v1/vehicules", vehicules_1.default);
 app.use("/api/v1/documents", documents_1.default);
+app.use("/api/v1/documents-access", documents_access_1.default);
 app.use("/api/v1/audit", audit_1.default);
 app.use("/api/v1/dashboard", dashboard_1.default);
 app.use("/api/v1/itineraires", itineraires_1.default);
 app.use("/api/v1/storage", storage_1.default);
 app.use("/api/v1/verify", verification_1.default);
+app.use("/api/v1/access", documents_access_1.default);
 app.get("/health", (req, res) => {
     res.status(200).json({
         status: "OK",

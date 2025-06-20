@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -92,16 +115,8 @@ function createProprietaire(req, res) {
                         console.log('✅ Pièce d\'identité uploadée vers PINATA:', pinataUrl);
                     }
                     else {
-                        console.log('💾 Stockage local de la pièce d\'identité (PINATA non configuré)');
-                        documentData = {
-                            nom: `Pièce d'identité - ${nom} ${prenom}`,
-                            type: 'PIECE_IDENTITE',
-                            chemin: req.file.path,
-                            taille: req.file.size,
-                            mimeType: req.file.mimetype,
-                            proprietaireId: newProprietaire.id,
-                            createdById
-                        };
+                        console.error('❌ PINATA non configuré, impossible d\'uploader la pièce d\'identité');
+                        throw new Error('Service de stockage de fichiers non configuré. Veuillez configurer PINATA.');
                     }
                     yield db_1.db.document.create({
                         data: documentData
@@ -331,12 +346,14 @@ function updateProprietaire(req, res) {
 }
 function deleteProprietaire(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         const { id } = req.params;
         const { userId } = (0, types_1.getAuthenticatedUser)(req);
         try {
             const proprietaire = yield db_1.db.proprietaire.findUnique({
                 where: { id },
                 include: {
+                    documents: true,
                     _count: {
                         select: {
                             vehicules: true
@@ -356,6 +373,36 @@ function deleteProprietaire(req, res) {
                     error: "Impossible de supprimer ce propriétaire car il possède des véhicules"
                 });
             }
+            if (proprietaire.documents && proprietaire.documents.length > 0) {
+                console.log(`🗑️ Suppression du document du propriétaire ${id}`);
+                for (const document of proprietaire.documents) {
+                    try {
+                        if (document.chemin && document.chemin.includes('ipfs')) {
+                            const ipfsHashMatch = document.chemin.match(/\/ipfs\/([^?]+)/);
+                            if (ipfsHashMatch) {
+                                const ipfsHash = ipfsHashMatch[1];
+                                console.log(`🗑️ Suppression du fichier IPFS: ${ipfsHash}`);
+                                const { pinataService } = yield Promise.resolve().then(() => __importStar(require('../services/pinata')));
+                                if (pinataService.isConfigured()) {
+                                    try {
+                                        yield pinataService.unpinFile(ipfsHash);
+                                        console.log(`✅ Fichier IPFS supprimé: ${ipfsHash}`);
+                                    }
+                                    catch (pinataError) {
+                                        console.warn(`⚠️ Erreur lors de la suppression du fichier IPFS ${ipfsHash}:`, pinataError);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (error) {
+                        console.warn(`⚠️ Erreur lors de la suppression du fichier pour le document ${document.id}:`, error);
+                    }
+                }
+                yield db_1.db.document.deleteMany({
+                    where: { proprietaireId: id }
+                });
+            }
             yield db_1.db.proprietaire.delete({
                 where: { id }
             });
@@ -364,12 +411,15 @@ function deleteProprietaire(req, res) {
                     action: "DELETE",
                     table: "Proprietaire",
                     recordId: id,
-                    oldValues: proprietaire,
+                    oldValues: Object.assign(Object.assign({}, proprietaire), { documentsDeleted: ((_a = proprietaire.documents) === null || _a === void 0 ? void 0 : _a.length) || 0 }),
                     userId
                 }
             });
             return res.status(200).json({
-                data: { message: "Propriétaire supprimé avec succès" },
+                data: {
+                    message: "Propriétaire supprimé avec succès",
+                    documentsDeleted: ((_b = proprietaire.documents) === null || _b === void 0 ? void 0 : _b.length) || 0
+                },
                 error: null
             });
         }

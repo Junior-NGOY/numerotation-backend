@@ -6,6 +6,37 @@ import { calculateRegistrationPrice } from "@/utils/pricingUtils";
 import { pinataService } from "@/services/pinata";
 import { unlink } from "fs/promises";
 
+// Fonction de validation et transformation du numéro d'immatriculation
+function validateAndTransformImmatriculation(numeroImmatriculation: string): { isValid: boolean; transformed: string; error?: string } {
+  if (!numeroImmatriculation) {
+    return { isValid: false, transformed: '', error: 'Le numéro d\'immatriculation est requis' };
+  }
+
+  // Supprimer tous les espaces et convertir en majuscules
+  const cleaned = numeroImmatriculation.replace(/\s+/g, '').toUpperCase();
+
+  // Vérifier la longueur exacte (6 caractères)
+  if (cleaned.length !== 6) {
+    return { 
+      isValid: false, 
+      transformed: cleaned, 
+      error: 'Le numéro d\'immatriculation doit contenir exactement 6 caractères (ex: 5518AQ)' 
+    };
+  }
+
+  // Vérifier le format : chiffres et lettres uniquement
+  const validFormat = /^[A-Z0-9]{6}$/.test(cleaned);
+  if (!validFormat) {
+    return { 
+      isValid: false, 
+      transformed: cleaned, 
+      error: 'Le numéro d\'immatriculation ne peut contenir que des lettres et des chiffres (ex: 5518AQ)' 
+    };
+  }
+
+  return { isValid: true, transformed: cleaned };
+}
+
 // Fonction utilitaire pour déterminer le type de document basé sur le nom du fichier
 function determineDocumentType(filename: string): 'CARTE_ROSE' | 'PERMIS_CONDUIRE' | 'PDF_COMPLET' {
   const lowerFilename = filename.toLowerCase();
@@ -57,15 +88,24 @@ export async function createVehicule(req: Request, res: Response) {
       });
     }
 
+    // Validation et transformation du numéro d'immatriculation
+    const immatriculationValidation = validateAndTransformImmatriculation(numeroImmatriculation);
+    if (!immatriculationValidation.isValid) {
+      return res.status(400).json({
+        data: null,
+        error: immatriculationValidation.error
+      });
+    }
+    const normalizedNumeroImmatriculation = immatriculationValidation.transformed;
+
     // Utiliser l'année courante si anneeEnregistrement n'est pas fournie
     const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();// Générer un code unique séquentiel si non fourni
     let codeUnique = providedCodeUnique;
-    if (!codeUnique) {
-      console.log(`🚀 Génération du code unique pour: année=${finalAnneeEnregistrement}, immat=${numeroImmatriculation}`);
+    if (!codeUnique) {      console.log(`🚀 Génération du code unique pour: année=${finalAnneeEnregistrement}, immat=${normalizedNumeroImmatriculation}`);
       
       try {
-        const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, numeroImmatriculation);
-        codeUnique = generateSequentialVehiculeCode(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
+        const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, normalizedNumeroImmatriculation);
+        codeUnique = generateSequentialVehiculeCode(finalAnneeEnregistrement, nextSequence, normalizedNumeroImmatriculation);
         
         console.log(`✅ Code unique généré: ${codeUnique}`);
         
@@ -98,7 +138,7 @@ export async function createVehicule(req: Request, res: Response) {
       });
     }    // Vérifier l'unicité des identifiants du véhicule (sauf le code unique déjà vérifié)
     const [existingImmatriculation, existingChassis] = await Promise.all([
-      db.vehicule.findUnique({ where: { numeroImmatriculation } }),
+      db.vehicule.findUnique({ where: { numeroImmatriculation: normalizedNumeroImmatriculation } }),
       db.vehicule.findUnique({ where: { numeroChassis } })
     ]);
 
@@ -133,7 +173,7 @@ const newVehicule = await db.vehicule.create({
         marque,
         modele,
         typeVehicule,
-        numeroImmatriculation,
+        numeroImmatriculation: normalizedNumeroImmatriculation,
         numeroChassis,
         anneeFabrication: anneeFabricationInt,
         capaciteAssises: capaciteAssisesInt,
@@ -219,20 +259,11 @@ const newVehicule = await db.vehicule.create({
               console.log(`🗑️ Fichier local ${file.filename} supprimé après upload PINATA`);
             } catch (unlinkError) {
               console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
-            }
-
-            console.log(`✅ Document ${file.originalname} uploadé vers PINATA:`, pinataUrl);
+            }            console.log(`✅ Document ${file.originalname} uploadé vers PINATA:`, pinataUrl);
           } else {
-            // Fallback vers stockage local
-            console.log(`💾 Stockage local du document ${file.originalname} (PINATA non configuré)`);            documentData = {
-              nom: `${documentType} - ${marque} ${modele}`,
-              type: documentType,
-              chemin: file.path,
-              taille: file.size,
-              mimeType: file.mimetype,
-              vehiculeId: newVehicule.id,
-              createdById
-            };
+            // PINATA n'est pas configuré - retourner une erreur
+            console.error(`❌ PINATA non configuré, impossible d'uploader ${file.originalname}`);
+            throw new Error('Service de stockage de fichiers non configuré. Veuillez configurer PINATA.');
           }
 
           // Créer l'enregistrement du document
@@ -482,6 +513,19 @@ export async function updateVehicule(req: Request, res: Response) {
       }
     }
 
+    // Validation et transformation du numéro d'immatriculation
+    let normalizedNumeroImmatriculation = numeroImmatriculation;
+    if (numeroImmatriculation) {
+      const immatriculationValidation = validateAndTransformImmatriculation(numeroImmatriculation);
+      if (!immatriculationValidation.isValid) {
+        return res.status(400).json({
+          data: null,
+          error: immatriculationValidation.error
+        });
+      }
+      normalizedNumeroImmatriculation = immatriculationValidation.transformed;
+    }
+
     const existingVehicule = await db.vehicule.findUnique({
       where: { id }
     });
@@ -505,13 +549,11 @@ export async function updateVehicule(req: Request, res: Response) {
           error: "Propriétaire non trouvé"
         });
       }
-    }
-
-    // Vérifier l'unicité des identifiants modifiés
+    }    // Vérifier l'unicité des identifiants modifiés
     const checks = [];
-    if (numeroImmatriculation && numeroImmatriculation !== existingVehicule.numeroImmatriculation) {
+    if (normalizedNumeroImmatriculation && normalizedNumeroImmatriculation !== existingVehicule.numeroImmatriculation) {
       checks.push(
-        db.vehicule.findUnique({ where: { numeroImmatriculation } })
+        db.vehicule.findUnique({ where: { numeroImmatriculation: normalizedNumeroImmatriculation } })
           .then(result => ({ type: 'immatriculation', exists: !!result }))
       );
     }
@@ -567,7 +609,7 @@ export async function updateVehicule(req: Request, res: Response) {
         ...(marque && { marque }),
         ...(modele && { modele }),
         ...(typeVehicule && { typeVehicule, prixEnregistrement }),
-        ...(numeroImmatriculation && { numeroImmatriculation }),
+        ...(numeroImmatriculation && { numeroImmatriculation: normalizedNumeroImmatriculation }),
         ...(numeroChassis && { numeroChassis }),        ...(anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt }),
         ...(capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt }),
         ...(itineraireId && { itineraireId }),
@@ -645,6 +687,7 @@ export async function deleteVehicule(req: Request, res: Response) {
     const vehicule = await db.vehicule.findUnique({
       where: { id },
       include: {
+        documents: true, // Récupérer tous les documents associés
         _count: {
           select: {
             documents: true
@@ -660,6 +703,42 @@ export async function deleteVehicule(req: Request, res: Response) {
       });
     }
 
+    // Supprimer tous les documents associés au véhicule
+    if (vehicule.documents && vehicule.documents.length > 0) {
+      console.log(`🗑️ Suppression de ${vehicule.documents.length} document(s) associé(s) au véhicule ${id}`);
+      
+      for (const document of vehicule.documents) {
+        try {
+          // Supprimer le fichier de Pinata si l'URL contient un hash IPFS
+          if (document.chemin && document.chemin.includes('ipfs')) {
+            const ipfsHashMatch = document.chemin.match(/\/ipfs\/([^?]+)/);
+            if (ipfsHashMatch) {
+              const ipfsHash = ipfsHashMatch[1];
+              console.log(`🗑️ Suppression du fichier IPFS: ${ipfsHash}`);
+                // Import dynamique du service Pinata
+              const { pinataService } = await import('@/services/pinata');
+              if (pinataService.isConfigured()) {
+                try {
+                  await pinataService.unpinFile(ipfsHash);
+                  console.log(`✅ Fichier IPFS supprimé: ${ipfsHash}`);
+                } catch (pinataError) {
+                  console.warn(`⚠️ Erreur lors de la suppression du fichier IPFS ${ipfsHash}:`, pinataError);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn(`⚠️ Erreur lors de la suppression du fichier pour le document ${document.id}:`, error);
+        }
+      }
+
+      // Supprimer les documents de la base de données
+      await db.document.deleteMany({
+        where: { vehiculeId: id }
+      });
+    }
+
+    // Supprimer le véhicule
     await db.vehicule.delete({
       where: { id }
     });
@@ -670,13 +749,19 @@ export async function deleteVehicule(req: Request, res: Response) {
         action: "DELETE",
         table: "Vehicule",
         recordId: id,
-        oldValues: vehicule,
+        oldValues: { 
+          ...vehicule, 
+          documentsDeleted: vehicule.documents?.length || 0 
+        },
         userId
       }
     });
 
     return res.status(200).json({
-      data: { message: "Véhicule supprimé avec succès" },
+      data: { 
+        message: "Véhicule supprimé avec succès",
+        documentsDeleted: vehicule.documents?.length || 0
+      },
       error: null
     });
   } catch (error) {

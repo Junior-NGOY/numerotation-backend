@@ -4,6 +4,7 @@ import userRouter from "./routes/users";
 import proprietaireRouter from "./routes/proprietaires";
 import vehiculeRouter from "./routes/vehicules";
 import documentRouter from "./routes/documents";
+import documentsAccessRouter from "./routes/documents-access";
 import auditRouter from "./routes/audit";
 import dashboardRouter from "./routes/dashboard";
 import itineraireRouter from "./routes/itineraires";
@@ -36,11 +37,13 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/proprietaires", proprietaireRouter);
 app.use("/api/v1/vehicules", vehiculeRouter);
 app.use("/api/v1/documents", documentRouter);
+app.use("/api/v1/documents-access", documentsAccessRouter);
 app.use("/api/v1/audit", auditRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/itineraires", itineraireRouter);
 app.use("/api/v1/storage", storageRouter);
 app.use("/api/v1/verify", verificationRouter); // Route publique de vérification
+app.use("/api/v1/access", documentsAccessRouter); // Routes d'accès aux documents
 
 // Route de santé
 app.get("/health", (req, res) => {

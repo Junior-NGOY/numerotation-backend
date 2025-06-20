@@ -13,50 +13,49 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.pinataService = void 0;
-const axios_1 = __importDefault(require("axios"));
-const form_data_1 = __importDefault(require("form-data"));
+const pinata_web3_1 = require("pinata-web3");
 const fs_1 = __importDefault(require("fs"));
 class PinataService {
     constructor() {
+        this.pinata = null;
         this.config = {
-            apiKey: process.env.PINATA_API_KEY || '',
-            secretApiKey: process.env.PINATA_SECRET_API_KEY || '',
+            jwt: process.env.PINATA_JWT || '',
             gateway: process.env.PINATA_GATEWAY || 'https://gateway.pinata.cloud'
         };
-        if (!this.config.apiKey || !this.config.secretApiKey) {
-            console.warn('PINATA credentials not configured. File uploads will use local storage.');
+        if (this.config.jwt) {
+            this.pinata = new pinata_web3_1.PinataSDK({
+                pinataJwt: this.config.jwt,
+                pinataGateway: this.config.gateway
+            });
+        }
+        else {
+            console.warn('PINATA JWT not configured. File uploads will use local storage.');
         }
     }
     isConfigured() {
-        return !!(this.config.apiKey && this.config.secretApiKey);
+        return !!(this.config.jwt && this.pinata);
     }
     uploadFile(filePath, fileName, metadata) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
             if (!this.isConfigured()) {
                 throw new Error('PINATA is not configured');
             }
             try {
-                const formData = new form_data_1.default();
-                const fileStream = fs_1.default.createReadStream(filePath);
-                formData.append('file', fileStream);
-                if (metadata) {
-                    formData.append('pinataMetadata', JSON.stringify({
-                        name: fileName,
-                        keyvalues: metadata
-                    }));
-                }
-                formData.append('pinataOptions', JSON.stringify({
-                    cidVersion: 0
-                }));
-                const response = yield axios_1.default.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
-                    headers: Object.assign(Object.assign({}, formData.getHeaders()), { 'pinata_api_key': this.config.apiKey, 'pinata_secret_api_key': this.config.secretApiKey }),
-                });
-                return response.data;
+                const fileBuffer = fs_1.default.readFileSync(filePath);
+                const file = new File([new Uint8Array(fileBuffer)], fileName);
+                const uploadOptions = {
+                    metadata: Object.assign({ name: fileName }, (metadata && { keyvalues: metadata }))
+                };
+                const result = yield this.pinata.upload.file(file, uploadOptions);
+                return {
+                    IpfsHash: result.IpfsHash,
+                    PinSize: result.PinSize,
+                    Timestamp: result.Timestamp || new Date().toISOString()
+                };
             }
             catch (error) {
                 console.error('Error uploading to PINATA:', error);
-                throw new Error(`Failed to upload file to PINATA: ${((_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) || error.message}`);
+                throw new Error(`Failed to upload file to PINATA: ${error.message}`);
             }
         });
     }
@@ -65,21 +64,15 @@ class PinataService {
     }
     unpinFile(ipfsHash) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
             if (!this.isConfigured()) {
                 throw new Error('PINATA is not configured');
             }
             try {
-                yield axios_1.default.delete(`https://api.pinata.cloud/pinning/unpin/${ipfsHash}`, {
-                    headers: {
-                        'pinata_api_key': this.config.apiKey,
-                        'pinata_secret_api_key': this.config.secretApiKey,
-                    },
-                });
+                yield this.pinata.unpin([ipfsHash]);
             }
             catch (error) {
                 console.error('Error unpinning from PINATA:', error);
-                throw new Error(`Failed to unpin file from PINATA: ${((_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) || error.message}`);
+                throw new Error(`Failed to unpin file from PINATA: ${error.message}`);
             }
         });
     }
@@ -89,13 +82,8 @@ class PinataService {
                 return false;
             }
             try {
-                const response = yield axios_1.default.get('https://api.pinata.cloud/data/testAuthentication', {
-                    headers: {
-                        'pinata_api_key': this.config.apiKey,
-                        'pinata_secret_api_key': this.config.secretApiKey,
-                    },
-                });
-                return response.data.message === 'Congratulations! You are communicating with the Pinata API!';
+                const result = yield this.pinata.testAuthentication();
+                return result.message === 'Congratulations! You are communicating with the Pinata API!';
             }
             catch (error) {
                 console.error('PINATA connection test failed:', error);
