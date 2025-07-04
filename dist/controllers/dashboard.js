@@ -18,6 +18,7 @@ exports.getRevenueEvolution = getRevenueEvolution;
 exports.getRecentActivity = getRecentActivity;
 const db_1 = require("../db/db");
 const pricingUtils_1 = require("../utils/pricingUtils");
+const REVENUE_START_DATE = new Date('2025-07-01T00:00:00.000Z');
 function getDashboardStats(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -58,6 +59,11 @@ function getDashboardStats(req, res) {
                 db_1.db.vehicule.aggregate({
                     _sum: {
                         prixEnregistrement: true
+                    },
+                    where: {
+                        createdAt: {
+                            gte: REVENUE_START_DATE
+                        }
                     }
                 }),
                 db_1.db.user.groupBy({
@@ -403,6 +409,7 @@ function getDatabaseMetrics() {
 }
 function getVehicleStatsByCategory(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         try {
             const { period } = req.query;
             let dateFilter = {};
@@ -434,7 +441,22 @@ function getVehicleStatsByCategory(req, res) {
                     };
                     break;
                 default:
+                    dateFilter = {
+                        createdAt: {
+                            gte: REVENUE_START_DATE
+                        }
+                    };
                     break;
+            }
+            if (!dateFilter) {
+                dateFilter = {
+                    createdAt: {
+                        gte: REVENUE_START_DATE
+                    }
+                };
+            }
+            else if (((_a = dateFilter.createdAt) === null || _a === void 0 ? void 0 : _a.gte) && dateFilter.createdAt.gte < REVENUE_START_DATE) {
+                dateFilter = Object.assign(Object.assign({}, dateFilter), { createdAt: Object.assign(Object.assign({}, dateFilter.createdAt), { gte: REVENUE_START_DATE }) });
             }
             const vehiculesByCategory = yield db_1.db.vehicule.groupBy({
                 by: ['typeVehicule'],
@@ -488,6 +510,9 @@ function getRevenueEvolution(req, res) {
                 const date = new Date(now);
                 date.setDate(now.getDate() - i);
                 date.setHours(0, 0, 0, 0);
+                if (date < REVENUE_START_DATE) {
+                    continue;
+                }
                 const nextDate = new Date(date);
                 nextDate.setDate(date.getDate() + 1);
                 const dayStats = yield db_1.db.vehicule.groupBy({
@@ -518,6 +543,7 @@ function getRevenueEvolution(req, res) {
                 });
                 evolution.push(dayData);
             }
+            evolution.reverse();
             return res.json({
                 data: evolution,
                 error: null

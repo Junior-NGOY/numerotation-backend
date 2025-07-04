@@ -2,6 +2,9 @@ import { db } from "@/db/db";
 import { Request, Response } from "express";
 import { calculateRegistrationPrice } from "@/utils/pricingUtils";
 
+// Date de début pour le calcul des revenus (1er juillet 2025)
+const REVENUE_START_DATE = new Date('2025-07-01T00:00:00.000Z');
+
 // Obtenir les statistiques du tableau de bord
 export async function getDashboardStats(req: Request, res: Response) {
   try {    const [
@@ -67,10 +70,15 @@ export async function getDashboardStats(req: Request, res: Response) {
         }
       }),
       
-      // Calcul des revenus totaux depuis tous les véhicules enregistrés
+      // Calcul des revenus totaux depuis le 1er juillet 2025
       db.vehicule.aggregate({
         _sum: {
           prixEnregistrement: true
+        },
+        where: {
+          createdAt: {
+            gte: REVENUE_START_DATE
+          }
         }
       }),
       
@@ -485,7 +493,7 @@ export async function getVehicleStatsByCategory(req: Request, res: Response) {
   try {
     const { period } = req.query; // 'day', 'week', 'month'
     
-    let dateFilter = {};
+    let dateFilter: any = {};
     const now = new Date();
     
     switch (period) {
@@ -515,8 +523,31 @@ export async function getVehicleStatsByCategory(req: Request, res: Response) {
         };
         break;
       default:
-        // Pas de filtre temporel - tous les véhicules
+        // Filtre par défaut : seulement les véhicules depuis le 1er juillet 2025 (pour les revenus)
+        dateFilter = {
+          createdAt: {
+            gte: REVENUE_START_DATE
+          }
+        };
         break;
+    }
+
+    // S'assurer que le filtre inclut toujours la date de début des revenus
+    if (!dateFilter) {
+      dateFilter = {
+        createdAt: {
+          gte: REVENUE_START_DATE
+        }
+      };
+    } else if (dateFilter.createdAt?.gte && dateFilter.createdAt.gte < REVENUE_START_DATE) {
+      // Si le filtre existant est antérieur à la date de début, l'ajuster
+      dateFilter = {
+        ...dateFilter,
+        createdAt: {
+          ...dateFilter.createdAt,
+          gte: REVENUE_START_DATE
+        }
+      };
     }
 
     // Statistiques par type de véhicule avec revenus
@@ -580,6 +611,11 @@ export async function getRevenueEvolution(req: Request, res: Response) {
       date.setDate(now.getDate() - i);
       date.setHours(0, 0, 0, 0);
       
+      // Ne pas inclure les dates antérieures au 1er juillet 2025
+      if (date < REVENUE_START_DATE) {
+        continue;
+      }
+      
       const nextDate = new Date(date);
       nextDate.setDate(date.getDate() + 1);
       
@@ -614,6 +650,9 @@ export async function getRevenueEvolution(req: Request, res: Response) {
       
       evolution.push(dayData);
     }
+    
+    // Inverser l'ordre pour avoir les dates les plus récentes en premier
+    evolution.reverse();
     
     return res.json({
       data: evolution,

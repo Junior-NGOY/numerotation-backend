@@ -25,16 +25,16 @@ export function generateVehiculeCode(marque: string, modele: string, immatricula
 export function generateSequentialVehiculeCode(year: number, sequence: number, numeroImmatriculation: string): string {
   const yearSuffix = year.toString().slice(-2); // Derniers 2 chiffres de l'année
   
-  // Extraire les 2 premières lettres de la plaque d'immatriculation
-  const plateLetters = numeroImmatriculation
-    .replace(/[^A-Z]/gi, '') // Garder seulement les lettres
+  // Extraire les 2 premiers caractères de la plaque d'immatriculation (chiffres ou lettres)
+  const platePrefix = numeroImmatriculation
+    .replace(/[^A-Z0-9]/gi, '') // Garder seulement les lettres et les chiffres
     .toUpperCase()
-    .substring(0, 2) // Prendre les 2 premières
-    .padEnd(2, 'X'); // Compléter avec 'X' si moins de 2 lettres
+    .substring(0, 2) // Prendre les 2 premiers caractères (chiffres ou lettres)
+    .padEnd(2, 'X'); // Compléter avec 'X' si moins de 2 caractères
   
-  const paddedSequence = sequence.toString().padStart(6, '0'); // Séquence sur 6 chiffres
+  const paddedSequence = sequence.toString().padStart(8, '0'); // Séquence sur 8 chiffres
   
-  return `LSH-${yearSuffix}-${plateLetters}${paddedSequence}`;
+  return `LSH-${yearSuffix}-${platePrefix}${paddedSequence}`;
 }
 
 // Obtenir le prochain numéro de séquence global pour tous les véhicules
@@ -71,10 +71,10 @@ export async function getNextVehicleSequence(year: number, numeroImmatriculation
       const codeUnique = vehicule.codeUnique;
       console.log(`   - Code: ${codeUnique}`);
       
-      // Format: LSH-25-XY000001, on veut extraire "000001"
+      // Format: LSH-25-XY00000001, on veut extraire "00000001"
       const parts = codeUnique.split('-');
       if (parts.length === 3) {
-        const sequencePart = parts[2].substring(2); // Prendre après les 2 lettres
+        const sequencePart = parts[2].substring(2); // Prendre après les 2 lettres/chiffres
         const sequenceNum = parseInt(sequencePart, 10);
         console.log(`     → Séquence extraite: ${sequencePart} → ${sequenceNum}`);
         

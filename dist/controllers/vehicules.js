@@ -1,27 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -30,17 +7,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-};
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                t[p[i]] = s[p[i]];
-        }
-    return t;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createVehicule = createVehicule;
@@ -51,94 +17,26 @@ exports.deleteVehicule = deleteVehicule;
 exports.getVehiculesStats = getVehiculesStats;
 exports.searchVehicule = searchVehicule;
 const db_1 = require("../db/db");
+const promises_1 = require("fs/promises");
 const types_1 = require("../types");
 const generateSlug_1 = require("../utils/generateSlug");
 const pricingUtils_1 = require("../utils/pricingUtils");
 const pinata_1 = require("../services/pinata");
-const promises_1 = require("fs/promises");
-function validateAndTransformImmatriculation(numeroImmatriculation) {
-    if (!numeroImmatriculation) {
-        return { isValid: false, transformed: '', error: 'Le numéro d\'immatriculation est requis' };
-    }
-    const cleaned = numeroImmatriculation.replace(/\s+/g, '').toUpperCase();
-    if (cleaned.length !== 6) {
-        return {
-            isValid: false,
-            transformed: cleaned,
-            error: 'Le numéro d\'immatriculation doit contenir exactement 6 caractères (ex: 5518AQ)'
-        };
-    }
-    const validFormat = /^[A-Z0-9]{6}$/.test(cleaned);
-    if (!validFormat) {
-        return {
-            isValid: false,
-            transformed: cleaned,
-            error: 'Le numéro d\'immatriculation ne peut contenir que des lettres et des chiffres (ex: 5518AQ)'
-        };
-    }
-    return { isValid: true, transformed: cleaned };
-}
-function determineDocumentType(filename) {
-    const lowerFilename = filename.toLowerCase();
-    if (lowerFilename.includes('carte') || lowerFilename.includes('rose') || lowerFilename.includes('grise')) {
-        return 'CARTE_ROSE';
-    }
-    else if (lowerFilename.includes('permis') || lowerFilename.includes('conduire')) {
-        return 'PERMIS_CONDUIRE';
-    }
-    else {
-        return 'PDF_COMPLET';
-    }
-}
 function createVehicule(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraireId, codeUnique: providedCodeUnique, anneeEnregistrement, proprietaireId } = req.body;
         const { userId: createdById } = (0, types_1.getAuthenticatedUser)(req);
         try {
-            const anneeFabricationInt = parseInt(anneeFabrication);
-            const capaciteAssisesInt = parseInt(capaciteAssises);
-            if (isNaN(anneeFabricationInt) || anneeFabricationInt < 1900 || anneeFabricationInt > new Date().getFullYear() + 1) {
-                return res.status(400).json({
-                    data: null,
-                    error: "L'année de fabrication doit être un nombre valide entre 1900 et l'année courante"
-                });
-            }
-            if (isNaN(capaciteAssisesInt) || capaciteAssisesInt < 1 || capaciteAssisesInt > 100) {
-                return res.status(400).json({
-                    data: null,
-                    error: "La capacité d'assises doit être un nombre valide entre 1 et 100"
-                });
-            }
-            const immatriculationValidation = validateAndTransformImmatriculation(numeroImmatriculation);
-            if (!immatriculationValidation.isValid) {
-                return res.status(400).json({
-                    data: null,
-                    error: immatriculationValidation.error
-                });
-            }
-            const normalizedNumeroImmatriculation = immatriculationValidation.transformed;
             const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();
             let codeUnique = providedCodeUnique;
             if (!codeUnique) {
-                console.log(`🚀 Génération du code unique pour: année=${finalAnneeEnregistrement}, immat=${normalizedNumeroImmatriculation}`);
-                try {
-                    const nextSequence = yield (0, generateSlug_1.getNextVehicleSequence)(finalAnneeEnregistrement, normalizedNumeroImmatriculation);
-                    codeUnique = (0, generateSlug_1.generateSequentialVehiculeCode)(finalAnneeEnregistrement, nextSequence, normalizedNumeroImmatriculation);
-                    console.log(`✅ Code unique généré: ${codeUnique}`);
-                    const existingVehicle = yield db_1.db.vehicule.findUnique({ where: { codeUnique } });
-                    if (existingVehicle) {
-                        console.log(`⚠️ Conflit détecté pour le code: ${codeUnique}`);
-                        return res.status(500).json({
-                            data: null,
-                            error: "Conflit de génération de code unique, veuillez réessayer"
-                        });
-                    }
-                }
-                catch (error) {
-                    console.error('❌ Erreur lors de la génération du code unique:', error);
+                const nextSequence = yield (0, generateSlug_1.getNextVehicleSequence)(finalAnneeEnregistrement, numeroImmatriculation);
+                codeUnique = (0, generateSlug_1.generateSequentialVehiculeCode)(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
+                const existingVehicle = yield db_1.db.vehicule.findUnique({ where: { codeUnique } });
+                if (existingVehicle) {
                     return res.status(500).json({
                         data: null,
-                        error: "Erreur lors de la génération du code unique"
+                        error: "Conflit de génération de code unique, veuillez réessayer"
                     });
                 }
             }
@@ -152,7 +50,7 @@ function createVehicule(req, res) {
                 });
             }
             const [existingImmatriculation, existingChassis] = yield Promise.all([
-                db_1.db.vehicule.findUnique({ where: { numeroImmatriculation: normalizedNumeroImmatriculation } }),
+                db_1.db.vehicule.findUnique({ where: { numeroImmatriculation } }),
                 db_1.db.vehicule.findUnique({ where: { numeroChassis } })
             ]);
             if (existingImmatriculation) {
@@ -182,10 +80,10 @@ function createVehicule(req, res) {
                     marque,
                     modele,
                     typeVehicule,
-                    numeroImmatriculation: normalizedNumeroImmatriculation,
+                    numeroImmatriculation,
                     numeroChassis,
-                    anneeFabrication: anneeFabricationInt,
-                    capaciteAssises: capaciteAssisesInt,
+                    anneeFabrication,
+                    capaciteAssises,
                     itineraireId,
                     codeUnique,
                     anneeEnregistrement: finalAnneeEnregistrement,
@@ -202,15 +100,6 @@ function createVehicule(req, res) {
                             telephone: true
                         }
                     },
-                    itineraire: {
-                        select: {
-                            id: true,
-                            nom: true,
-                            description: true,
-                            distance: true,
-                            duree: true
-                        }
-                    },
                     createdBy: {
                         select: {
                             id: true,
@@ -225,51 +114,56 @@ function createVehicule(req, res) {
                     }
                 }
             });
+            const uploadedDocuments = [];
             if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-                console.log(`📄 Upload de ${req.files.length} document(s) pour le véhicule...`);
+                console.log(`📎 ${req.files.length} fichier(s) détecté(s) pour le véhicule ${newVehicule.id}`);
                 for (const file of req.files) {
                     try {
                         let documentData = {};
-                        const documentType = determineDocumentType(file.originalname);
                         if (pinata_1.pinataService.isConfigured()) {
-                            console.log(`📤 Upload document ${file.originalname} vers PINATA...`);
+                            console.log('📤 Upload vers PINATA:', file.filename);
                             const pinataResult = yield pinata_1.pinataService.uploadFile(file.path, file.filename, {
-                                type: documentType,
+                                type: 'CARTE_ROSE',
                                 vehiculeId: newVehicule.id,
-                                vehiculeInfo: `${marque} ${modele} - ${numeroImmatriculation}`,
                                 uploadedBy: createdById
                             });
                             const pinataUrl = pinata_1.pinataService.generateFileUrl(pinataResult.IpfsHash);
                             documentData = {
-                                nom: `${documentType} - ${marque} ${modele}`,
-                                type: documentType,
                                 chemin: pinataUrl,
                                 taille: file.size,
-                                mimeType: file.mimetype,
-                                vehiculeId: newVehicule.id,
-                                createdById
+                                mimeType: file.mimetype
                             };
                             try {
                                 yield (0, promises_1.unlink)(file.path);
-                                console.log(`🗑️ Fichier local ${file.filename} supprimé après upload PINATA`);
+                                console.log('🗑️ Fichier local supprimé après upload PINATA');
                             }
                             catch (unlinkError) {
                                 console.warn('⚠️ Impossible de supprimer le fichier local:', unlinkError);
                             }
-                            console.log(`✅ Document ${file.originalname} uploadé vers PINATA:`, pinataUrl);
+                            console.log('✅ Fichier uploadé vers PINATA:', pinataUrl);
                         }
                         else {
-                            console.error(`❌ PINATA non configuré, impossible d'uploader ${file.originalname}`);
-                            throw new Error('Service de stockage de fichiers non configuré. Veuillez configurer PINATA.');
+                            console.warn('⚠️ PINATA non configuré, impossible d\'uploader le fichier');
+                            continue;
                         }
-                        yield db_1.db.document.create({
-                            data: documentData
+                        const document = yield db_1.db.document.create({
+                            data: Object.assign({ nom: file.originalname, type: 'CARTE_ROSE', vehiculeId: newVehicule.id, createdById }, documentData)
                         });
-                        console.log(`✅ Document ${documentType} créé avec succès pour le véhicule`);
+                        uploadedDocuments.push(document);
+                        console.log('💾 Document créé en base:', document.id);
                     }
-                    catch (documentError) {
-                        console.error(`❌ Erreur lors de l'upload du document ${file.originalname}:`, documentError);
+                    catch (fileError) {
+                        console.error('❌ Erreur lors du traitement du fichier:', file.filename, fileError);
+                        try {
+                            yield (0, promises_1.unlink)(file.path);
+                        }
+                        catch (unlinkError) {
+                            console.error('Erreur lors de la suppression du fichier:', unlinkError);
+                        }
                     }
+                }
+                if (uploadedDocuments.length > 0) {
+                    console.log(`✅ ${uploadedDocuments.length} document(s) uploadé(s) avec succès pour le véhicule ${newVehicule.id}`);
                 }
             }
             yield db_1.db.auditLog.create({
@@ -277,12 +171,12 @@ function createVehicule(req, res) {
                     action: "CREATE",
                     table: "Vehicule",
                     recordId: newVehicule.id,
-                    newValues: newVehicule,
+                    newValues: Object.assign(Object.assign({}, newVehicule), { uploadedDocuments: uploadedDocuments.length }),
                     userId: createdById
                 }
             });
             return res.status(201).json({
-                data: transformVehiculeItineraire(newVehicule),
+                data: Object.assign(Object.assign({}, newVehicule), { uploadedDocuments: uploadedDocuments.length }),
                 error: null
             });
         }
@@ -329,27 +223,15 @@ function getVehicules(req, res) {
             }
             const [vehicules, total] = yield Promise.all([
                 db_1.db.vehicule.findMany({
-                    where, include: {
+                    where,
+                    include: {
                         proprietaire: {
                             select: {
                                 id: true,
                                 nom: true,
                                 prenom: true,
-                                adresse: true,
                                 telephone: true,
-                                numeroPiece: true,
-                                typePiece: true,
-                                lieuDelivrance: true,
-                                dateDelivrance: true
-                            }
-                        },
-                        itineraire: {
-                            select: {
-                                id: true,
-                                nom: true,
-                                description: true,
-                                distance: true,
-                                duree: true
+                                numeroPiece: true
                             }
                         },
                         createdBy: {
@@ -373,7 +255,7 @@ function getVehicules(req, res) {
             ]);
             return res.status(200).json({
                 data: {
-                    items: transformVehicules(vehicules),
+                    items: vehicules,
                     pagination: {
                         page: Number(page),
                         limit: Number(limit),
@@ -401,15 +283,6 @@ function getVehiculeById(req, res) {
                 where: { id },
                 include: {
                     proprietaire: true,
-                    itineraire: {
-                        select: {
-                            id: true,
-                            nom: true,
-                            description: true,
-                            distance: true,
-                            duree: true
-                        }
-                    },
                     createdBy: {
                         select: {
                             id: true,
@@ -442,7 +315,7 @@ function getVehiculeById(req, res) {
                 });
             }
             return res.status(200).json({
-                data: transformVehiculeItineraire(vehicule),
+                data: vehicule,
                 error: null
             });
         }
@@ -461,37 +334,6 @@ function updateVehicule(req, res) {
         const { marque, modele, typeVehicule, numeroImmatriculation, numeroChassis, anneeFabrication, capaciteAssises, itineraireId, codeUnique, anneeEnregistrement, proprietaireId } = req.body;
         const { userId } = (0, types_1.getAuthenticatedUser)(req);
         try {
-            let anneeFabricationInt;
-            let capaciteAssisesInt;
-            if (anneeFabrication !== undefined) {
-                anneeFabricationInt = parseInt(anneeFabrication);
-                if (isNaN(anneeFabricationInt) || anneeFabricationInt < 1900 || anneeFabricationInt > new Date().getFullYear() + 1) {
-                    return res.status(400).json({
-                        data: null,
-                        error: "L'année de fabrication doit être un nombre valide entre 1900 et l'année courante"
-                    });
-                }
-            }
-            if (capaciteAssises !== undefined) {
-                capaciteAssisesInt = parseInt(capaciteAssises);
-                if (isNaN(capaciteAssisesInt) || capaciteAssisesInt < 1 || capaciteAssisesInt > 100) {
-                    return res.status(400).json({
-                        data: null,
-                        error: "La capacité d'assises doit être un nombre valide entre 1 et 100"
-                    });
-                }
-            }
-            let normalizedNumeroImmatriculation = numeroImmatriculation;
-            if (numeroImmatriculation) {
-                const immatriculationValidation = validateAndTransformImmatriculation(numeroImmatriculation);
-                if (!immatriculationValidation.isValid) {
-                    return res.status(400).json({
-                        data: null,
-                        error: immatriculationValidation.error
-                    });
-                }
-                normalizedNumeroImmatriculation = immatriculationValidation.transformed;
-            }
             const existingVehicule = yield db_1.db.vehicule.findUnique({
                 where: { id }
             });
@@ -513,8 +355,8 @@ function updateVehicule(req, res) {
                 }
             }
             const checks = [];
-            if (normalizedNumeroImmatriculation && normalizedNumeroImmatriculation !== existingVehicule.numeroImmatriculation) {
-                checks.push(db_1.db.vehicule.findUnique({ where: { numeroImmatriculation: normalizedNumeroImmatriculation } })
+            if (numeroImmatriculation && numeroImmatriculation !== existingVehicule.numeroImmatriculation) {
+                checks.push(db_1.db.vehicule.findUnique({ where: { numeroImmatriculation } })
                     .then(result => ({ type: 'immatriculation', exists: !!result })));
             }
             if (numeroChassis && numeroChassis !== existingVehicule.numeroChassis) {
@@ -556,28 +398,14 @@ function updateVehicule(req, res) {
             const prixEnregistrement = typeVehicule ? (0, pricingUtils_1.calculateRegistrationPrice)(typeVehicule) : existingVehicule.prixEnregistrement;
             const updatedVehicule = yield db_1.db.vehicule.update({
                 where: { id },
-                data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (marque && { marque })), (modele && { modele })), (typeVehicule && { typeVehicule, prixEnregistrement })), (numeroImmatriculation && { numeroImmatriculation: normalizedNumeroImmatriculation })), (numeroChassis && { numeroChassis })), (anneeFabricationInt !== undefined && { anneeFabrication: anneeFabricationInt })), (capaciteAssisesInt !== undefined && { capaciteAssises: capaciteAssisesInt })), (itineraireId && { itineraireId })), (codeUnique && { codeUnique })), (anneeEnregistrement && { anneeEnregistrement })), (proprietaireId && { proprietaireId })),
+                data: Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (marque && { marque })), (modele && { modele })), (typeVehicule && { typeVehicule, prixEnregistrement })), (numeroImmatriculation && { numeroImmatriculation })), (numeroChassis && { numeroChassis })), (anneeFabrication && { anneeFabrication })), (capaciteAssises && { capaciteAssises })), (itineraireId && { itineraireId })), (codeUnique && { codeUnique })), (anneeEnregistrement && { anneeEnregistrement })), (proprietaireId && { proprietaireId })),
                 include: {
                     proprietaire: {
                         select: {
                             id: true,
                             nom: true,
                             prenom: true,
-                            adresse: true,
-                            telephone: true,
-                            numeroPiece: true,
-                            typePiece: true,
-                            lieuDelivrance: true,
-                            dateDelivrance: true
-                        }
-                    },
-                    itineraire: {
-                        select: {
-                            id: true,
-                            nom: true,
-                            description: true,
-                            distance: true,
-                            duree: true
+                            telephone: true
                         }
                     },
                     createdBy: {
@@ -605,7 +433,7 @@ function updateVehicule(req, res) {
                 }
             });
             return res.status(200).json({
-                data: transformVehiculeItineraire(updatedVehicule),
+                data: updatedVehicule,
                 error: null
             });
         }
@@ -620,14 +448,12 @@ function updateVehicule(req, res) {
 }
 function deleteVehicule(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b;
         const { id } = req.params;
         const { userId } = (0, types_1.getAuthenticatedUser)(req);
         try {
             const vehicule = yield db_1.db.vehicule.findUnique({
                 where: { id },
                 include: {
-                    documents: true,
                     _count: {
                         select: {
                             documents: true
@@ -641,36 +467,6 @@ function deleteVehicule(req, res) {
                     error: "Véhicule non trouvé"
                 });
             }
-            if (vehicule.documents && vehicule.documents.length > 0) {
-                console.log(`🗑️ Suppression de ${vehicule.documents.length} document(s) associé(s) au véhicule ${id}`);
-                for (const document of vehicule.documents) {
-                    try {
-                        if (document.chemin && document.chemin.includes('ipfs')) {
-                            const ipfsHashMatch = document.chemin.match(/\/ipfs\/([^?]+)/);
-                            if (ipfsHashMatch) {
-                                const ipfsHash = ipfsHashMatch[1];
-                                console.log(`🗑️ Suppression du fichier IPFS: ${ipfsHash}`);
-                                const { pinataService } = yield Promise.resolve().then(() => __importStar(require('../services/pinata')));
-                                if (pinataService.isConfigured()) {
-                                    try {
-                                        yield pinataService.unpinFile(ipfsHash);
-                                        console.log(`✅ Fichier IPFS supprimé: ${ipfsHash}`);
-                                    }
-                                    catch (pinataError) {
-                                        console.warn(`⚠️ Erreur lors de la suppression du fichier IPFS ${ipfsHash}:`, pinataError);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (error) {
-                        console.warn(`⚠️ Erreur lors de la suppression du fichier pour le document ${document.id}:`, error);
-                    }
-                }
-                yield db_1.db.document.deleteMany({
-                    where: { vehiculeId: id }
-                });
-            }
             yield db_1.db.vehicule.delete({
                 where: { id }
             });
@@ -679,15 +475,12 @@ function deleteVehicule(req, res) {
                     action: "DELETE",
                     table: "Vehicule",
                     recordId: id,
-                    oldValues: Object.assign(Object.assign({}, vehicule), { documentsDeleted: ((_a = vehicule.documents) === null || _a === void 0 ? void 0 : _a.length) || 0 }),
+                    oldValues: vehicule,
                     userId
                 }
             });
             return res.status(200).json({
-                data: {
-                    message: "Véhicule supprimé avec succès",
-                    documentsDeleted: ((_b = vehicule.documents) === null || _b === void 0 ? void 0 : _b.length) || 0
-                },
+                data: { message: "Véhicule supprimé avec succès" },
                 error: null
             });
         }
@@ -806,16 +599,4 @@ function searchVehicule(req, res) {
             });
         }
     });
-}
-function transformVehiculeItineraire(vehicule) {
-    if (!vehicule)
-        return vehicule;
-    if (vehicule.itineraire && vehicule.itineraire.duree !== undefined) {
-        const _a = vehicule.itineraire, { duree } = _a, itineraireRest = __rest(_a, ["duree"]);
-        return Object.assign(Object.assign({}, vehicule), { itineraire: Object.assign(Object.assign({}, itineraireRest), { dureeEstimee: duree }) });
-    }
-    return vehicule;
-}
-function transformVehicules(vehicules) {
-    return vehicules.map(transformVehiculeItineraire);
 }

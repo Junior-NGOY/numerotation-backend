@@ -29,13 +29,13 @@ function generateVehiculeCode(marque, modele, immatriculation) {
 }
 function generateSequentialVehiculeCode(year, sequence, numeroImmatriculation) {
     const yearSuffix = year.toString().slice(-2);
-    const plateLetters = numeroImmatriculation
-        .replace(/[^A-Z]/gi, '')
+    const platePrefix = numeroImmatriculation
+        .replace(/[^A-Z0-9]/gi, '')
         .toUpperCase()
         .substring(0, 2)
         .padEnd(2, 'X');
-    const paddedSequence = sequence.toString().padStart(6, '0');
-    return `LSH-${yearSuffix}-${plateLetters}${paddedSequence}`;
+    const paddedSequence = sequence.toString().padStart(8, '0');
+    return `LSH-${yearSuffix}-${platePrefix}${paddedSequence}`;
 }
 function getNextVehicleSequence(year, numeroImmatriculation) {
     return __awaiter(this, void 0, void 0, function* () {
