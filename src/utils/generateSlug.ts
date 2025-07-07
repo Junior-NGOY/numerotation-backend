@@ -21,7 +21,7 @@ export function generateVehiculeCode(marque: string, modele: string, immatricula
   return `${marqueSlug}${modeleSlug}${immatSlug}${timestamp.slice(-6)}${random}`;
 }
 
-// Générer un code unique séquentiel au format LSH-25-XY00000001
+// Générer un code unique séquentiel au format LSH-25-XY000002 (dernière partie = 8 caractères)
 export function generateSequentialVehiculeCode(year: number, sequence: number, numeroImmatriculation: string): string {
   const yearSuffix = year.toString().slice(-2); // Derniers 2 chiffres de l'année
   
@@ -32,7 +32,8 @@ export function generateSequentialVehiculeCode(year: number, sequence: number, n
     .substring(0, 2) // Prendre les 2 premiers caractères (chiffres ou lettres)
     .padEnd(2, 'X'); // Compléter avec 'X' si moins de 2 caractères
   
-  const paddedSequence = sequence.toString().padStart(8, '0'); // Séquence sur 8 chiffres
+  // Séquence sur 6 chiffres pour que platePrefix(2) + sequence(6) = 8 caractères
+  const paddedSequence = sequence.toString().padStart(6, '0'); 
   
   return `LSH-${yearSuffix}-${platePrefix}${paddedSequence}`;
 }
@@ -71,7 +72,7 @@ export async function getNextVehicleSequence(year: number, numeroImmatriculation
       const codeUnique = vehicule.codeUnique;
       console.log(`   - Code: ${codeUnique}`);
       
-      // Format: LSH-25-XY00000001, on veut extraire "00000001"
+      // Format: LSH-25-XY000001, on veut extraire "000001" (6 chiffres après les 2 caractères)
       const parts = codeUnique.split('-');
       if (parts.length === 3) {
         const sequencePart = parts[2].substring(2); // Prendre après les 2 lettres/chiffres

@@ -34,7 +34,7 @@ function generateSequentialVehiculeCode(year, sequence, numeroImmatriculation) {
         .toUpperCase()
         .substring(0, 2)
         .padEnd(2, 'X');
-    const paddedSequence = sequence.toString().padStart(8, '0');
+    const paddedSequence = sequence.toString().padStart(6, '0');
     return `LSH-${yearSuffix}-${platePrefix}${paddedSequence}`;
 }
 function getNextVehicleSequence(year, numeroImmatriculation) {
