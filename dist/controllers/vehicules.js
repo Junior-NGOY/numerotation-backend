@@ -97,7 +97,12 @@ function createVehicule(req, res) {
                             id: true,
                             nom: true,
                             prenom: true,
-                            telephone: true
+                            adresse: true,
+                            telephone: true,
+                            numeroPiece: true,
+                            typePiece: true,
+                            lieuDelivrance: true,
+                            dateDelivrance: true
                         }
                     },
                     createdBy: {
@@ -230,10 +235,15 @@ function getVehicules(req, res) {
                                 id: true,
                                 nom: true,
                                 prenom: true,
+                                adresse: true,
                                 telephone: true,
-                                numeroPiece: true
+                                numeroPiece: true,
+                                typePiece: true,
+                                lieuDelivrance: true,
+                                dateDelivrance: true
                             }
                         },
+                        itineraire: true,
                         createdBy: {
                             select: {
                                 id: true,
@@ -282,7 +292,22 @@ function getVehiculeById(req, res) {
             const vehicule = yield db_1.db.vehicule.findUnique({
                 where: { id },
                 include: {
-                    proprietaire: true,
+                    proprietaire: {
+                        select: {
+                            id: true,
+                            nom: true,
+                            prenom: true,
+                            adresse: true,
+                            telephone: true,
+                            numeroPiece: true,
+                            typePiece: true,
+                            lieuDelivrance: true,
+                            dateDelivrance: true,
+                            createdAt: true,
+                            updatedAt: true
+                        }
+                    },
+                    itineraire: true,
                     createdBy: {
                         select: {
                             id: true,
@@ -405,7 +430,12 @@ function updateVehicule(req, res) {
                             id: true,
                             nom: true,
                             prenom: true,
-                            telephone: true
+                            adresse: true,
+                            telephone: true,
+                            numeroPiece: true,
+                            typePiece: true,
+                            lieuDelivrance: true,
+                            dateDelivrance: true
                         }
                     },
                     createdBy: {

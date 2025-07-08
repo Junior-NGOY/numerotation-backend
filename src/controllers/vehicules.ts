@@ -102,7 +102,12 @@ export async function createVehicule(req: Request, res: Response) {
             id: true,
             nom: true,
             prenom: true,
-            telephone: true
+            adresse: true,
+            telephone: true,
+            numeroPiece: true,
+            typePiece: true,
+            lieuDelivrance: true,
+            dateDelivrance: true
           }
         },
         createdBy: {
@@ -278,10 +283,15 @@ export async function getVehicules(req: Request, res: Response) {
               id: true,
               nom: true,
               prenom: true,
+              adresse: true,
               telephone: true,
-              numeroPiece: true
+              numeroPiece: true,
+              typePiece: true,
+              lieuDelivrance: true,
+              dateDelivrance: true
             }
           },
+          itineraire: true,
           createdBy: {
             select: {
               id: true,
@@ -329,7 +339,22 @@ export async function getVehiculeById(req: Request, res: Response) {
     const vehicule = await db.vehicule.findUnique({
       where: { id },
       include: {
-        proprietaire: true,
+        proprietaire: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            adresse: true,
+            telephone: true,
+            numeroPiece: true,
+            typePiece: true,
+            lieuDelivrance: true,
+            dateDelivrance: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
+        itineraire: true,
         createdBy: {
           select: {
             id: true,
@@ -494,7 +519,12 @@ export async function updateVehicule(req: Request, res: Response) {
             id: true,
             nom: true,
             prenom: true,
-            telephone: true
+            adresse: true,
+            telephone: true,
+            numeroPiece: true,
+            typePiece: true,
+            lieuDelivrance: true,
+            dateDelivrance: true
           }
         },
         createdBy: {
