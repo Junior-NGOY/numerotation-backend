@@ -73,7 +73,8 @@ exports.createVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)),
-        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié"), codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
+        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide"),
+        codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
@@ -96,7 +97,7 @@ exports.updateVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)).optional(),
-        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié").optional(),
+        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide").optional(),
         codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),

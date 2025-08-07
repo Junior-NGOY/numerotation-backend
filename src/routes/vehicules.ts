@@ -22,7 +22,7 @@ import {
 const vehiculeRouter = express.Router();
 
 // Toutes les routes nécessitent une authentification
-//vehiculeRouter.use(authenticateToken);
+vehiculeRouter.use(authenticateToken);
 
 // Routes CRUD
 vehiculeRouter.post("/", vehiculeUploadHandler, validateVehiculeWithFiles, cleanupFilesOnError, createVehicule);

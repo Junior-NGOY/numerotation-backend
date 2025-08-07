@@ -11,6 +11,7 @@ const validateVehiculeWithFiles_1 = require("../middleware/validateVehiculeWithF
 const vehiculeUpload_1 = require("../middleware/vehiculeUpload");
 const validation_1 = require("../middleware/validation");
 const vehiculeRouter = express_1.default.Router();
+vehiculeRouter.use(auth_1.authenticateToken);
 vehiculeRouter.post("/", vehiculeUpload_1.vehiculeUploadHandler, validateVehiculeWithFiles_1.validateVehiculeWithFiles, vehiculeUpload_1.cleanupFilesOnError, vehicules_1.createVehicule);
 vehiculeRouter.get("/", (0, validateRequest_1.validate)(validation_1.paginationSchema), vehicules_1.getVehicules);
 vehiculeRouter.get("/stats", vehicules_1.getVehiculesStats);

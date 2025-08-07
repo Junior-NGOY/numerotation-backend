@@ -78,8 +78,10 @@ export const createVehiculeSchema = z.object({
     ]).pipe(z.number().int().min(1900).max(new Date().getFullYear())),
     capaciteAssises: z.union([
       z.string().transform((val) => parseInt(val, 10)),
-      z.number()    ]).pipe(z.number().int().min(1).max(100)),
-    itineraire: z.string().min(5, "L'itinéraire doit être spécifié"),    codeUnique: z.string().min(8, "Code unique invalide").optional(),
+      z.number()
+    ]).pipe(z.number().int().min(1).max(100)),
+    itineraireId: z.string().cuid("ID itinéraire invalide"),
+    codeUnique: z.string().min(8, "Code unique invalide").optional(),
     anneeEnregistrement: z.union([
       z.string().transform((val) => parseInt(val, 10)),
       z.number()
@@ -103,7 +105,7 @@ export const updateVehiculeSchema = z.object({
       z.string().transform((val) => parseInt(val, 10)),
       z.number()
     ]).pipe(z.number().int().min(1).max(100)).optional(),
-    itineraire: z.string().min(5, "L'itinéraire doit être spécifié").optional(),
+    itineraireId: z.string().cuid("ID itinéraire invalide").optional(),
     codeUnique: z.string().min(8, "Code unique invalide").optional(),
     anneeEnregistrement: z.union([
       z.string().transform((val) => parseInt(val, 10)),
