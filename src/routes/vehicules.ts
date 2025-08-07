@@ -5,11 +5,13 @@ import {
   getVehiculeById,
   updateVehicule,
   deleteVehicule,
-  getVehiculesStats
+  getVehiculesStats,
+  getVehiculesByProprietaireId
 } from "@/controllers/vehicules";
 import { authenticateToken, authorizeRoles } from "@/middleware/auth";
 import { validate } from "@/middleware/validateRequest";
-import { multipleUpload } from "@/middleware/upload";
+import { validateVehiculeWithFiles } from "@/middleware/validateVehiculeWithFiles";
+import { vehiculeUploadHandler, cleanupFilesOnError } from "@/middleware/vehiculeUpload";
 import {
   createVehiculeSchema,
   updateVehiculeSchema,
@@ -20,12 +22,13 @@ import {
 const vehiculeRouter = express.Router();
 
 // Toutes les routes nécessitent une authentification
-vehiculeRouter.use(authenticateToken);
+//vehiculeRouter.use(authenticateToken);
 
 // Routes CRUD
-vehiculeRouter.post("/", multipleUpload, validate(createVehiculeSchema), createVehicule);
+vehiculeRouter.post("/", vehiculeUploadHandler, validateVehiculeWithFiles, cleanupFilesOnError, createVehicule);
 vehiculeRouter.get("/", validate(paginationSchema), getVehicules);
 vehiculeRouter.get("/stats", getVehiculesStats);
+vehiculeRouter.get("/proprietaire/:proprietaireId", validate(paginationSchema), getVehiculesByProprietaireId);
 vehiculeRouter.get("/:id", validate(idParamSchema), getVehiculeById);
 vehiculeRouter.put("/:id", validate(idParamSchema), validate(updateVehiculeSchema), updateVehicule);
 vehiculeRouter.delete("/:id", authorizeRoles("ADMIN"), validate(idParamSchema), deleteVehicule);

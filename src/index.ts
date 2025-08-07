@@ -1,3 +1,6 @@
+// Charger les variables d'environnement en premier
+require("dotenv").config();
+
 import express from "express";
 import path from "path";
 import userRouter from "./routes/users";
@@ -13,7 +16,6 @@ import verificationRouter from "./routes/verification";
 import { logRequest } from "./middleware/auth";
 import { initializeUploadDirectories } from "./config/upload";
 
-require("dotenv").config();
 const cors = require("cors");
 const app = express();
 

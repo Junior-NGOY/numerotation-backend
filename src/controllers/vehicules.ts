@@ -21,9 +21,33 @@ export async function createVehicule(req: Request, res: Response) {
     anneeEnregistrement,
     proprietaireId  } = req.body;
   
-  const { userId: createdById } = getAuthenticatedUser(req);  try {
+  const { userId: createdById } = getAuthenticatedUser(req);
+
+  try {
+    // Vérification supplémentaire : s'assurer que proprietaireId est fourni
+    if (!proprietaireId) {
+      return res.status(400).json({
+        data: null,
+        error: "L'ID du propriétaire est obligatoire"
+      });
+    }
+
+    // Vérifier si le propriétaire existe
+    const existingProprietaire = await db.proprietaire.findUnique({
+      where: { id: proprietaireId }
+    });
+
+    if (!existingProprietaire) {
+      return res.status(404).json({
+        data: null,
+        error: "Propriétaire non trouvé"
+      });
+    }
+
     // Utiliser l'année courante si anneeEnregistrement n'est pas fournie
-    const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();    // Générer un code unique séquentiel si non fourni
+    const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();
+
+    // Générer un code unique séquentiel si non fourni
     let codeUnique = providedCodeUnique;
     if (!codeUnique) {
       const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, numeroImmatriculation);
@@ -220,10 +244,40 @@ export async function createVehicule(req: Request, res: Response) {
       error: null
     });
   } catch (error) {
-    console.error("Erreur lors de la création du véhicule:", error);
+    console.error("❌ Erreur lors de la création du véhicule:", error);
+    
+    // Nettoyage des fichiers en cas d'erreur
+    if (req.files && Array.isArray(req.files)) {
+      for (const file of req.files) {
+        try {
+          await unlink(file.path);
+          console.log('🗑️ Fichier temporaire supprimé:', file.filename);
+        } catch (unlinkError) {
+          console.error('⚠️ Impossible de supprimer le fichier temporaire:', file.filename);
+        }
+      }
+    }
+    
+    // Gestion d'erreurs spécifiques
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint')) {
+        return res.status(409).json({
+          data: null,
+          error: "Un véhicule avec ces identifiants existe déjà"
+        });
+      }
+      
+      if (error.message.includes('Foreign key constraint')) {
+        return res.status(400).json({
+          data: null,
+          error: "Données de référence invalides (propriétaire ou itinéraire)"
+        });
+      }
+    }
+    
     return res.status(500).json({
       data: null,
-      error: "Erreur interne du serveur"
+      error: "Erreur interne du serveur lors de la création du véhicule"
     });
   }
 }
@@ -728,6 +782,103 @@ export async function searchVehicule(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("Erreur lors de la recherche du véhicule:", error);
+    return res.status(500).json({
+      data: null,
+      error: "Erreur interne du serveur"
+    });
+  }
+}
+
+// Récupérer tous les véhicules d'un propriétaire spécifique
+export async function getVehiculesByProprietaireId(req: Request, res: Response) {
+  const { proprietaireId } = req.params;
+  const { 
+    page = 1, 
+    limit = 10, 
+    search 
+  } = req.query;
+
+  try {
+    // Vérifier que le propriétaire existe
+    const proprietaire = await db.proprietaire.findUnique({
+      where: { id: proprietaireId },
+      select: { id: true, nom: true, prenom: true }
+    });
+
+    if (!proprietaire) {
+      return res.status(404).json({
+        data: null,
+        error: "Propriétaire non trouvé"
+      });
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const where: any = { proprietaireId };
+
+    // Recherche dans les véhicules du propriétaire
+    if (search) {
+      where.OR = [
+        { marque: { contains: search as string, mode: "insensitive" } },
+        { modele: { contains: search as string, mode: "insensitive" } },
+        { numeroImmatriculation: { contains: search as string, mode: "insensitive" } },
+        { numeroChassis: { contains: search as string, mode: "insensitive" } },
+        { codeUnique: { contains: search as string, mode: "insensitive" } }
+      ];
+    }
+
+    const [vehicules, total] = await Promise.all([
+      db.vehicule.findMany({
+        where,
+        include: {
+          proprietaire: {
+            select: {
+              id: true,
+              nom: true,
+              prenom: true,
+              adresse: true,
+              telephone: true,
+              numeroPiece: true,
+              typePiece: true,
+              lieuDelivrance: true,
+              dateDelivrance: true
+            }
+          },
+          itineraire: true,
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          _count: {
+            select: {
+              documents: true
+            }
+          }
+        },
+        skip,
+        take: Number(limit),
+        orderBy: { createdAt: "desc" }
+      }),
+      db.vehicule.count({ where })
+    ]);
+
+    return res.status(200).json({
+      data: {
+        items: vehicules,
+        proprietaire: proprietaire,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages: Math.ceil(total / Number(limit))
+        }
+      },
+      error: null
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des véhicules du propriétaire:", error);
     return res.status(500).json({
       data: null,
       error: "Erreur interne du serveur"

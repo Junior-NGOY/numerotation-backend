@@ -71,30 +71,39 @@ export async function loginUser(req: Request, res: Response) {
   const { email, password } = req.body;
 
   try {
+    console.log("🔍 Tentative de connexion pour:", email);
+    
     // Trouver l'utilisateur
     const user = await db.user.findUnique({
       where: { email }
     });
 
     if (!user) {
+      console.log("❌ Utilisateur non trouvé:", email);
       return res.status(401).json({
         data: null,
         error: "Email ou mot de passe incorrect"
       });
     }
+
+    console.log("✅ Utilisateur trouvé:", user.email, "Actif:", user.isActive);
 
     // Vérifier le mot de passe
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      console.log("❌ Mot de passe incorrect pour:", email);
       return res.status(401).json({
         data: null,
         error: "Email ou mot de passe incorrect"
       });
     }
 
+    console.log("✅ Mot de passe correct pour:", email);
+
     // Vérifier si l'utilisateur est actif
     if (!user.isActive) {
+      console.log("❌ Compte désactivé pour:", email);
       return res.status(403).json({
         data: null,
         error: "Compte désactivé"
@@ -107,12 +116,16 @@ export async function loginUser(req: Request, res: Response) {
       data: { lastLogin: new Date() }
     });
 
+    console.log("📝 Dernière connexion mise à jour pour:", email);
+
     // Générer le token JWT
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || "fallback-secret",
       { expiresIn: "7d" }
     );
+
+    console.log("🔑 Token JWT généré pour:", email);
 
     const userResponse = {
       id: user.id,
@@ -122,6 +135,8 @@ export async function loginUser(req: Request, res: Response) {
       isActive: user.isActive
     };
 
+    console.log("✅ Connexion réussie pour:", email);
+
     return res.status(200).json({
       data: {
         user: userResponse,
@@ -130,7 +145,7 @@ export async function loginUser(req: Request, res: Response) {
       error: null
     });
   } catch (error) {
-    console.error("Erreur lors de la connexion:", error);
+    console.error("❌ Erreur lors de la connexion:", error);
     return res.status(500).json({
       data: null,
       error: "Erreur interne du serveur"

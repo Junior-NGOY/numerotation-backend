@@ -73,8 +73,7 @@ exports.createVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)),
-        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide").optional(),
-        codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
+        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié"), codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
@@ -97,7 +96,7 @@ exports.updateVehiculeSchema = zod_1.z.object({
             zod_1.z.string().transform((val) => parseInt(val, 10)),
             zod_1.z.number()
         ]).pipe(zod_1.z.number().int().min(1).max(100)).optional(),
-        itineraireId: zod_1.z.string().cuid("ID itinéraire invalide").optional(),
+        itineraire: zod_1.z.string().min(5, "L'itinéraire doit être spécifié").optional(),
         codeUnique: zod_1.z.string().min(8, "Code unique invalide").optional(),
         anneeEnregistrement: zod_1.z.union([
             zod_1.z.string().transform((val) => parseInt(val, 10)),
@@ -136,34 +135,21 @@ exports.idParamSchema = zod_1.z.object({
         id: zod_1.z.string().cuid("ID invalide")
     })
 });
-exports.createItineraireSchema = zod_1.z.object({ body: zod_1.z.object({
-        nom: zod_1.z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+exports.createItineraireSchema = zod_1.z.object({
+    body: zod_1.z.object({
+        nom: zod_1.z.string().min(2, "Le nom de l'itinéraire doit contenir au moins 2 caractères"),
         description: zod_1.z.string().optional(),
-        distance: zod_1.z.union([
-            zod_1.z.string().transform((val) => val ? parseFloat(val) : null),
-            zod_1.z.number(),
-            zod_1.z.null()
-        ]).optional(),
-        dureeEstimee: zod_1.z.union([
-            zod_1.z.string().transform((val) => val ? parseInt(val, 10) : null),
-            zod_1.z.number(),
-            zod_1.z.null()
-        ]).optional()
+        distance: zod_1.z.number().positive("La distance doit être positive").optional(),
+        duree: zod_1.z.number().positive("La durée doit être positive").optional(),
+        isActive: zod_1.z.boolean().optional()
     })
 });
 exports.updateItineraireSchema = zod_1.z.object({
     body: zod_1.z.object({
-        nom: zod_1.z.string().min(2, "Le nom doit contenir au moins 2 caractères").optional(),
+        nom: zod_1.z.string().min(2, "Le nom de l'itinéraire doit contenir au moins 2 caractères").optional(),
         description: zod_1.z.string().optional(),
-        distance: zod_1.z.union([zod_1.z.string().transform((val) => val ? parseFloat(val) : null),
-            zod_1.z.number(),
-            zod_1.z.null()
-        ]).optional(),
-        dureeEstimee: zod_1.z.union([
-            zod_1.z.string().transform((val) => val ? parseInt(val, 10) : null),
-            zod_1.z.number(),
-            zod_1.z.null()
-        ]).optional(),
+        distance: zod_1.z.number().positive("La distance doit être positive").optional(),
+        duree: zod_1.z.number().positive("La durée doit être positive").optional(),
         isActive: zod_1.z.boolean().optional()
     })
 });

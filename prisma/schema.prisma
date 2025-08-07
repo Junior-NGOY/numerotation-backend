@@ -63,7 +63,7 @@ model Vehicule {
   capaciteAssises       Int
   codeUnique            String   @unique
   anneeEnregistrement   Int
-  prixEnregistrement    Int      @default(30000) // Prix en francs CFA selon le type de véhicule
+  prixEnregistrement    Int      @default(50000) // Prix en francs CFA selon le type de véhicule
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
