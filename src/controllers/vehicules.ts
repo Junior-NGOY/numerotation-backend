@@ -2,7 +2,7 @@ import { db } from "@/db/db";
 import { Request, Response } from "express";
 import { unlink } from "fs/promises";
 import { getAuthenticatedUser } from "@/types";
-import { generateSequentialVehiculeCode, getNextVehicleSequence } from "@/utils/generateSlug";
+import { generateUniqueVehiculeCode } from "@/utils/generateSlug";
 import { calculateRegistrationPrice } from "@/utils/pricingUtils";
 import { pinataService } from "@/services/pinata";
 
@@ -47,20 +47,23 @@ export async function createVehicule(req: Request, res: Response) {
     // Utiliser l'année courante si anneeEnregistrement n'est pas fournie
     const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();
 
-    // Générer un code unique séquentiel si non fourni
+    // Générer un code unique avec extraction aléatoire si non fourni
     let codeUnique = providedCodeUnique;
     if (!codeUnique) {
-      const nextSequence = await getNextVehicleSequence(finalAnneeEnregistrement, numeroImmatriculation);
-      codeUnique = generateSequentialVehiculeCode(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
-      
-      // Vérifier que le code généré n'existe pas déjà (sécurité supplémentaire)
-      const existingVehicle = await db.vehicule.findUnique({ where: { codeUnique } });
-      if (existingVehicle) {
-        return res.status(500).json({
-          data: null,
-          error: "Conflit de génération de code unique, veuillez réessayer"
+      // Fonction pour vérifier l'unicité du code
+      const checkCodeUniqueness = async (code: string): Promise<boolean> => {
+        const existing = await db.vehicule.findUnique({
+          where: { codeUnique: code }
         });
-      }
+        return !existing; // Retourne true si le code est unique (pas trouvé)
+      };
+
+      // Générer un code unique avec extraction aléatoire des 6 premiers caractères
+      codeUnique = await generateUniqueVehiculeCode(
+        numeroImmatriculation,
+        finalAnneeEnregistrement, // Utiliser l'année d'enregistrement plutôt que l'année de fabrication
+        checkCodeUniqueness
+      );
     }
     // Vérifier si le propriétaire existe
     const proprietaire = await db.proprietaire.findUnique({

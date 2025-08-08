@@ -46,15 +46,13 @@ function createVehicule(req, res) {
             const finalAnneeEnregistrement = anneeEnregistrement || new Date().getFullYear();
             let codeUnique = providedCodeUnique;
             if (!codeUnique) {
-                const nextSequence = yield (0, generateSlug_1.getNextVehicleSequence)(finalAnneeEnregistrement, numeroImmatriculation);
-                codeUnique = (0, generateSlug_1.generateSequentialVehiculeCode)(finalAnneeEnregistrement, nextSequence, numeroImmatriculation);
-                const existingVehicle = yield db_1.db.vehicule.findUnique({ where: { codeUnique } });
-                if (existingVehicle) {
-                    return res.status(500).json({
-                        data: null,
-                        error: "Conflit de génération de code unique, veuillez réessayer"
+                const checkCodeUniqueness = (code) => __awaiter(this, void 0, void 0, function* () {
+                    const existing = yield db_1.db.vehicule.findUnique({
+                        where: { codeUnique: code }
                     });
-                }
+                    return !existing;
+                });
+                codeUnique = yield (0, generateSlug_1.generateUniqueVehiculeCode)(numeroImmatriculation, finalAnneeEnregistrement, checkCodeUniqueness);
             }
             const proprietaire = yield db_1.db.proprietaire.findUnique({
                 where: { id: proprietaireId }

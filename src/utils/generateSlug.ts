@@ -22,15 +22,31 @@ export function generateVehiculeCode(marque: string, modele: string, immatricula
 }
 
 // Générer un code unique séquentiel au format LSH-25-XY000002 (dernière partie = 8 caractères)
+// XY est choisi aléatoirement parmi les paires adjacentes des 4 premiers chiffres de la plaque (ex: 9412 → 94, 41, 12)
 export function generateSequentialVehiculeCode(year: number, sequence: number, numeroImmatriculation: string): string {
   const yearSuffix = year.toString().slice(-2); // Derniers 2 chiffres de l'année
   
-  // Extraire les 2 premiers caractères de la plaque d'immatriculation (chiffres ou lettres)
-  const platePrefix = numeroImmatriculation
-    .replace(/[^A-Z0-9]/gi, '') // Garder seulement les lettres et les chiffres
-    .toUpperCase()
-    .substring(0, 2) // Prendre les 2 premiers caractères (chiffres ou lettres)
-    .padEnd(2, 'X'); // Compléter avec 'X' si moins de 2 caractères
+  // Construire XY à partir des 4 premiers chiffres (paires adjacentes) : d0d1, d1d2, d2d3
+  const raw = (numeroImmatriculation ?? '').toString();
+  const digits = raw.replace(/\D/g, '');
+  let platePrefix: string;
+
+  if (digits.length >= 2) {
+    const firstN = digits.slice(0, Math.min(4, digits.length));
+    const candidates: string[] = [];
+    for (let i = 0; i < firstN.length - 1; i++) {
+      candidates.push(firstN.substring(i, i + 2));
+    }
+    // Choisir une paire aléatoirement parmi les candidates
+    platePrefix = candidates[Math.floor(Math.random() * candidates.length)];
+  } else {
+    // Repli: ancien comportement basé sur les 2 premiers alphanumériques
+    platePrefix = raw
+      .replace(/[^A-Z0-9]/gi, '') // Garder seulement les lettres et les chiffres
+      .toUpperCase()
+      .substring(0, 2)
+      .padEnd(2, 'X');
+  }
   
   // Séquence sur 6 chiffres pour que platePrefix(2) + sequence(6) = 8 caractères
   const paddedSequence = sequence.toString().padStart(6, '0'); 
@@ -104,4 +120,41 @@ export async function getNextVehicleSequence(year: number, numeroImmatriculation
     console.log(`🚨 Utilisation du fallback, séquence: ${fallbackSequence}`);
     return fallbackSequence;
   }
+}
+
+// Générer un code unique (séquentiel) garanti unique via un callback d'unicité
+// Signature attendue par le contrôleur: (plaque, année, checkUniq) => Promise<string>
+export async function generateUniqueVehiculeCode(
+  numeroImmatriculation: string,
+  year: number,
+  isUnique: (code: string) => Promise<boolean>
+): Promise<string> {
+  // Récupère la prochaine séquence globale de l'année
+  let sequence = await getNextVehicleSequence(year, numeroImmatriculation);
+
+  // Essaye plusieurs séquences croissantes jusqu'à obtenir un code unique
+  const MAX_TRIES = 50;
+  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+    const candidate = generateSequentialVehiculeCode(year, sequence, numeroImmatriculation);
+    if (await isUnique(candidate)) {
+      return candidate;
+    }
+    sequence += 1; // si collision, on incrémente et on réessaie
+  }
+
+  // Repli ultime: conserver le format et minimiser les collisions
+  const yearSuffix = year.toString().slice(-2);
+  const raw = (numeroImmatriculation ?? '').toString();
+  const digits = raw.replace(/\D/g, '');
+  let platePrefix: string;
+  if (digits.length >= 2) {
+    const firstN = digits.slice(0, Math.min(4, digits.length));
+    const candidates: string[] = [];
+    for (let i = 0; i < firstN.length - 1; i++) candidates.push(firstN.substring(i, i + 2));
+    platePrefix = candidates[Math.floor(Math.random() * candidates.length)];
+  } else {
+    platePrefix = raw.replace(/[^A-Z0-9]/gi, '').toUpperCase().substring(0, 2).padEnd(2, 'X');
+  }
+  const randomSeq = (Date.now() % 1_000_000).toString().padStart(6, '0');
+  return `LSH-${yearSuffix}-${platePrefix}${randomSeq}`;
 }

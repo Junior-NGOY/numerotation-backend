@@ -16,7 +16,8 @@
     "diagnostic": "tsx diagnostic.ts",
     "setup:dev": "tsx setup-env.ts development",
     "setup:prod": "tsx setup-env.ts production",
-    "test:connection": "npm run diagnostic"
+    "test:connection": "npm run diagnostic",
+    "test:seq": "tsx scripts/test-sequential-code.ts"
   },
   "keywords": [],
   "author": "",

@@ -13,6 +13,7 @@ exports.generateSlug = generateSlug;
 exports.generateVehiculeCode = generateVehiculeCode;
 exports.generateSequentialVehiculeCode = generateSequentialVehiculeCode;
 exports.getNextVehicleSequence = getNextVehicleSequence;
+exports.generateUniqueVehiculeCode = generateUniqueVehiculeCode;
 const db_1 = require("../db/db");
 function generateSlug(title) {
     const slug = title.toLowerCase().replace(/\s+/g, "-");
@@ -29,11 +30,24 @@ function generateVehiculeCode(marque, modele, immatriculation) {
 }
 function generateSequentialVehiculeCode(year, sequence, numeroImmatriculation) {
     const yearSuffix = year.toString().slice(-2);
-    const platePrefix = numeroImmatriculation
-        .replace(/[^A-Z0-9]/gi, '')
-        .toUpperCase()
-        .substring(0, 2)
-        .padEnd(2, 'X');
+    const raw = (numeroImmatriculation !== null && numeroImmatriculation !== void 0 ? numeroImmatriculation : '').toString();
+    const digits = raw.replace(/\D/g, '');
+    let platePrefix;
+    if (digits.length >= 2) {
+        const firstN = digits.slice(0, Math.min(4, digits.length));
+        const candidates = [];
+        for (let i = 0; i < firstN.length - 1; i++) {
+            candidates.push(firstN.substring(i, i + 2));
+        }
+        platePrefix = candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    else {
+        platePrefix = raw
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase()
+            .substring(0, 2)
+            .padEnd(2, 'X');
+    }
     const paddedSequence = sequence.toString().padStart(6, '0');
     return `LSH-${yearSuffix}-${platePrefix}${paddedSequence}`;
 }
@@ -87,5 +101,34 @@ function getNextVehicleSequence(year, numeroImmatriculation) {
             console.log(`🚨 Utilisation du fallback, séquence: ${fallbackSequence}`);
             return fallbackSequence;
         }
+    });
+}
+function generateUniqueVehiculeCode(numeroImmatriculation, year, isUnique) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let sequence = yield getNextVehicleSequence(year, numeroImmatriculation);
+        const MAX_TRIES = 50;
+        for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+            const candidate = generateSequentialVehiculeCode(year, sequence, numeroImmatriculation);
+            if (yield isUnique(candidate)) {
+                return candidate;
+            }
+            sequence += 1;
+        }
+        const yearSuffix = year.toString().slice(-2);
+        const raw = (numeroImmatriculation !== null && numeroImmatriculation !== void 0 ? numeroImmatriculation : '').toString();
+        const digits = raw.replace(/\D/g, '');
+        let platePrefix;
+        if (digits.length >= 2) {
+            const firstN = digits.slice(0, Math.min(4, digits.length));
+            const candidates = [];
+            for (let i = 0; i < firstN.length - 1; i++)
+                candidates.push(firstN.substring(i, i + 2));
+            platePrefix = candidates[Math.floor(Math.random() * candidates.length)];
+        }
+        else {
+            platePrefix = raw.replace(/[^A-Z0-9]/gi, '').toUpperCase().substring(0, 2).padEnd(2, 'X');
+        }
+        const randomSeq = (Date.now() % 1000000).toString().padStart(6, '0');
+        return `LSH-${yearSuffix}-${platePrefix}${randomSeq}`;
     });
 }
